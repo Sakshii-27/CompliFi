@@ -300,7 +300,7 @@ useEffect(() => {
         setNotifications(prev => [
           ...prev,
           {
-            id: 'dashboard-loaded',
+            id: `dashboard-loaded-${Date.now()}`,
             message: `Dashboard loaded! Found ${allAmendments.length} curated regulatory amendments`,
             type: 'update'
           }
