@@ -1,17 +1,17 @@
-# Complify – Your AI-Powered Compliance Guardian
+# Complifi – Your AI-Powered Compliance Guardian
 
 ## Overview
 
 **Tired of drowning in endless paperwork and chasing compliance deadlines?**  
-Complify is here to change that. No more missed deadlines. No surprise penalties. Just seamless, automated compliance.
+Complifi is here to change that. No more missed deadlines. No surprise penalties. Just seamless, automated compliance.
 
-Vigilo is an agentic AI compliance assistant that continuously monitors official regulatory sources (e.g., FSSAI, SEBI, IT Acts) and draft bills, interprets changes in plain language, and maps them to your company’s real context using RAG and vector matching. It generates clear action items and checklists, triggers automated workflows via your existing systems, and maintains an audit-ready evidence trail. A customizable dashboard highlights risk, impact, and deadlines so teams catch changes early and stay compliant in real time.
+Complifi is an agentic AI compliance assistant that continuously monitors official regulatory sources (e.g., FSSAI, SEBI, IT Acts) and draft bills, interprets changes in plain language, and maps them to your company’s real context using RAG and vector matching. It generates clear action items and checklists, triggers automated workflows via your existing systems, and maintains an audit-ready evidence trail. A customizable dashboard highlights risk, impact, and deadlines so teams catch changes early and stay compliant in real time.
 
 ## Key Features
 
 1. **Proactive Regulation Scanning**
 
-   - Vigilo monitors portals like RBI, SEBI, FSSAI, IRDAI, and more — delivering real-time, company-specific compliance updates from draft bills and regulatory bodies.
+   - Complifi monitors portals like RBI, SEBI, FSSAI, IRDAI, and more — delivering real-time, company-specific compliance updates from draft bills and regulatory bodies.
    - Notifies companies of upcoming changes before enforcement deadlines.
 
 2. **AI-Powered Summarisation & Interpretation**
@@ -32,12 +32,12 @@ Vigilo is an agentic AI compliance assistant that continuously monitors official
    - Maintains detailed evidence trails for audits.
    - Reduces preparation time & ensures transparency.
 
-## Technical Workflow – How Vigilo Works
+## Technical Workflow – How Complifi Works
 
 1. **Industry Selection & Ingestion**
 
    - User selects their industry (Finance, Food, Pharma, IT, etc.).
-   - Based on this, Vigilo shows the required regulators and compliance documents.
+   - Based on this, Complifi shows the required regulators and compliance documents.
 
 2. **Amendment Intelligence**
 
@@ -88,8 +88,8 @@ Vigilo is an agentic AI compliance assistant that continuously monitors official
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/vigilo.git
-cd vigilo
+git clone https://github.com/yourusername/complifi.git
+cd complifi
 
 # Install dependencies
 npm install

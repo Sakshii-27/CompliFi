@@ -842,9 +842,9 @@ useEffect(() => {
   const PageLoadingScreen = () => (
   <div className="fixed inset-0 bg-gray-950 z-50 flex items-center justify-center">
     <div className="text-center max-w-md mx-auto px-6">
-      {/* Vigilo Logo */}
+      {/* Complifi Logo */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Vigilo</h1>
+        <h1 className="text-3xl font-bold text-white mb-2">Complifi</h1>
         <p className="text-gray-400">AI Compliance Intelligence</p>
       </div>
 
@@ -890,7 +890,7 @@ useEffect(() => {
       {/* Sidebar */}
       <div className="w-64 bg-gray-900 border-r border-gray-800 p-6 flex flex-col h-screen sticky top-0">
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-white mb-1">Vigilo</h2>
+          <h2 className="text-xl font-bold text-white mb-1">Complifi</h2>
           <p className="text-xs text-gray-400">AI Compliance Monitor</p>
         </div>
 

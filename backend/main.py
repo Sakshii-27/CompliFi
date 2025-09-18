@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from vigilo_utils import (
+from utils import (
     update_vector_db,
     get_metadata_store,
     store_company_data,
@@ -32,9 +32,9 @@ import os
 from fastapi.responses import FileResponse
 from prompt_chain import AmendmentAnalyzer
 from prompt_chain import select_relevant_amendments
-from vigilo_utils import backfill_metadata_excerpts
+from utils import backfill_metadata_excerpts
 
-app = FastAPI(title="Vigilo FSSAI Compliance API")
+app = FastAPI(title="Complifi FSSAI Compliance API")
 
 # CORS configuration
 app.add_middleware(
@@ -47,7 +47,7 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"msg": "Vigilo FSSAI Compliance API Running 🚀"}
+    return {"msg": "Complifi FSSAI Compliance API Running 🚀"}
 
 @app.get("/update")
 def update() -> Dict[str, int]:
@@ -84,17 +84,17 @@ def list_notifications() -> List[Dict]:
 
 @app.get("/test-scrape")
 def test_scrape():
-    from vigilo_utils import scrape_fssai_notifications
+    from utils import scrape_fssai_notifications
     return scrape_fssai_notifications()
 
 @app.get("/test-scrape-rbi")
 def test_scrape_rbi():
-    from vigilo_utils import scrape_rbi_notifications
+    from utils import scrape_rbi_notifications
     return scrape_rbi_notifications()
 
 @app.get("/test-scrape-dgft")
 def test_scrape_dgft():
-    from vigilo_utils import scrape_dgft_notifications
+    from utils import scrape_dgft_notifications
     return scrape_dgft_notifications()
 
 @app.get("/seed/synthetic")
@@ -145,7 +145,7 @@ def list_gst_notifications() -> List[Dict]:
 @app.get("/test-scrape-gst")
 def test_scrape_gst():
     """Test GST scraping"""
-    from vigilo_utils import scrape_gst_notifications
+    from utils import scrape_gst_notifications
     return scrape_gst_notifications()
 
 

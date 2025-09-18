@@ -5,7 +5,7 @@ from typing import List, Dict, Optional, Tuple
 import json
 import re
 from datetime import datetime
-from vigilo_utils import (
+from utils import (
     extract_text_from_file,
 )
 
@@ -708,7 +708,7 @@ class AmendmentAnalyzer:
         self.log_stage("START", f"Beginning analysis for {company_data.get('name','Company')}")
 
         # Load filtered amendments from backend/data/filtered_amms/
-        from vigilo_utils import get_latest_filtered_amendments
+        from utils import get_latest_filtered_amendments
         filtered_amendments = get_latest_filtered_amendments()
         
         if not filtered_amendments:
