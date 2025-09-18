@@ -1143,7 +1143,7 @@ const getBusinessDescriptionHint = (businessType: string) => {
 const Page = () => {
   const [currentStep, setCurrentStep] = useState("dashboard"); // 'dashboard', 'category', 'company', 'documents', 'submit'
   const API_BASE =
-    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5005";
   const [selectedCategory, setSelectedCategory] = useState("");
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: "",

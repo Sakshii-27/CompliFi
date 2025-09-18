@@ -4,7 +4,7 @@ from groq import Groq
 from typing import List, Dict, Optional, Tuple
 import json
 from datetime import datetime
-from vigilo_utils import (
+from utils import (
     extract_text_from_file,
 )
 
@@ -375,8 +375,8 @@ class AmendmentAnalyzer:
             "You are a compliance program manager and a dramatic, persuasive writer.\n\n"
             "Combine the following compliance assessments into a single comprehensive report with clear prioritization and department-wise actions. DO NOT REMOVE DETAILINGS FROM THE REPORTS. Write in an impactful, vivid tone. If evidence is thin, you may make small, reasonable assumptions to craft a compelling narrative.\n"
             "Output strict JSON only.\n\n"
-            "Input A (first 2 docs):\n" + json.dumps(first_batch)[:8000] + "\n\n"
-            "Input B (next 3 docs):\n" + json.dumps(second_batch)[:8000] + "\n\n"
+            "Input A (first 2 docs):\n" + json.dumps(first_batch)[:5005] + "\n\n"
+            "Input B (next 3 docs):\n" + json.dumps(second_batch)[:5005] + "\n\n"
             "Required JSON schema (ensure you propagate any deadlines; when present, avoid returning \"Unknown\"):\n"
             "{\n"
             "  \"compliance_report\": {\n"
