@@ -3,8 +3,9 @@ from dotenv import load_dotenv
 from groq import Groq
 from typing import List, Dict, Optional, Tuple
 import json
+import re
 from datetime import datetime
-from utils import (
+from vigilo_utils import (
     extract_text_from_file,
 )
 
@@ -30,11 +31,155 @@ load_dotenv(dotenv_path=os.path.join(backend_dir, ".env.local"))
 API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=API_KEY) if API_KEY else None
 
+def select_relevant_amendments(amendments: List[Dict], top_n: int = 3, source: str = "", 
+                              company: Optional[Dict] = None, model: str = "openai/gpt-oss-20b") -> List[Dict]:
+    """Select the most relevant amendments from a list for a given company."""
+    if not amendments:
+        return []
+
+    # Build a compact textual representation of amendments
+    items = []
+    for i, a in enumerate(amendments[:15]):  # Increase to 15 for more selection
+        # Use description if available, otherwise use title
+        desc = a.get('description') or a.get('title', '')[:200]
+        items.append(f"{i}. Title: {a.get('title','')}. Description: {desc}")
+
+    # If Groq client is available, call it with company context
+    if client:
+        try:
+            company_block = "General Business (no specific company provided)"
+            if company:
+                company_block = f"Company Name: {company.get('name', '')}\n"
+                company_block += f"Business Type: {company.get('business_type', '')}\n"
+                company_block += f"Description: {company.get('description', '')}\n"
+                if company.get('products'):
+                    company_block += f"Products: {', '.join([p.get('name', '') for p in company.get('products', [])][:3])}"
+
+            # Different prompts for different sources
+            if source == "FSSAI":
+                prompt = (
+                    f"As an FSSAI compliance expert, select the top {top_n} most relevant food safety amendments "
+                    f"for this company. Return JSON array of indices [0,2,5,...]:\n\n"
+                    f"Company:\n{company_block}\n\n"
+                    f"Available Amendments:\n" + "\n".join(items) +
+                    f"\n\nReturn exactly {top_n} indices as JSON array."
+                )
+            elif source == "DGFT":
+                prompt = (
+                    f"As a DGFT trade expert, select the top {top_n} most relevant import/export amendments "
+                    f"for this company. ALL businesses need to comply with DGFT regulations. "
+                    f"Return JSON array of indices [0,2,5,...]:\n\n"
+                    f"Company:\n{company_block}\n\n"
+                    f"Available Amendments:\n" + "\n".join(items) +
+                    f"\n\nReturn exactly {top_n} indices as JSON array. EVERY business needs DGFT compliance."
+                )
+            elif source == "GST":
+                prompt = (
+                    f"As a GST tax expert, select the top {top_n} most relevant tax amendments "
+                    f"for this company. ALL businesses must comply with GST regulations. "
+                    f"Return JSON array of indices [0,2,5,...]:\n\n"
+                    f"Company:\n{company_block}\n\n"
+                    f"Available Amendments:\n" + "\n".join(items) +
+                    f"\n\nReturn exactly {top_n} indices as JSON array. EVERY business needs GST compliance."
+                )
+            else:
+                prompt = (
+                    f"Select the top {top_n} most relevant {source} amendments for this company. "
+                    f"Return JSON array of indices [0,2,5,...]:\n\n"
+                    f"Company:\n{company_block}\n\n"
+                    f"Available Amendments:\n" + "\n".join(items) +
+                    f"\n\nReturn exactly {top_n} indices as JSON array."
+                )
+            
+            print(f"Calling Groq for source={source} with model={model}")
+            resp = client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}], 
+                model=model, 
+                temperature=0.1,  # Slight temperature for variety
+                max_tokens=50
+            )
+            text = resp.choices[0].message.content.strip()
+            print(f"Raw response: {text}")
+            
+            import re, json as _json
+            # Try to extract JSON array
+            m = re.search(r'\[[^\]]*\]', text)
+            if m:
+                try:
+                    arr = _json.loads(m.group(0))
+                    if isinstance(arr, list) and len(arr) > 0:
+                        selected = [amendments[i] for i in arr if 0 <= i < len(amendments)]
+                        print(f"Groq returned indices: {arr} -> selected {len(selected)} items")
+                        return selected[:top_n]
+                except _json.JSONDecodeError:
+                    print(f"Failed to parse JSON from: {text}")
+            
+            # If AI fails, fallback to manual selection
+            print(f"AI selection failed for {source}, using fallback")
+            
+        except Exception as e:
+            print(f"Groq selection failed for source {source}: {e}")
+
+    # Fallback: return top N by date with relevance scoring
+    return manual_relevance_selection(amendments, top_n, source, company)
+
+def manual_relevance_selection(amendments: List[Dict], top_n: int, source: str, company: Optional[Dict]) -> List[Dict]:
+    """Manual relevance scoring fallback when AI fails"""
+    scored_amendments = []
+    
+    for amendment in amendments:
+        score = 0
+        title = amendment.get('title', '').lower()
+        desc = amendment.get('description', '').lower()
+        
+        # Base score for recent amendments
+        if amendment.get('date') and amendment.get('date') != 'Unknown':
+            score += 10
+        
+        # Source-specific scoring
+        if source == "FSSAI":
+            # Food safety keywords
+            keywords = ['food', 'safety', 'label', 'packaging', 'ingredient', 'additive', 'standard']
+            for kw in keywords:
+                if kw in title or kw in desc:
+                    score += 5
+                    
+        elif source == "DGFT":
+            # Trade keywords
+            keywords = ['import', 'export', 'trade', 'custom', 'duty', 'license', 'permit']
+            for kw in keywords:
+                if kw in title or kw in desc:
+                    score += 5
+                    
+        elif source == "GST":
+            # Tax keywords
+            keywords = ['tax', 'gst', 'rate', 'return', 'filing', 'credit', 'invoice']
+            for kw in keywords:
+                if kw in title or kw in desc:
+                    score += 5
+        
+        # Company-specific scoring if available
+        if company:
+            company_name = company.get('name', '').lower()
+            business_type = company.get('business_type', '').lower()
+            description = company.get('description', '').lower()
+            
+            # Score based on company relevance
+            for term in [company_name, business_type, description]:
+                if term and (term in title or term in desc):
+                    score += 8
+        
+        scored_amendments.append((score, amendment))
+    
+    # Sort by score descending and take top N
+    scored_amendments.sort(key=lambda x: x[0], reverse=True)
+    return [amendment for score, amendment in scored_amendments[:top_n]]
+
 # Model configuration (per-stage)
 # Note: These identifiers are user-specified. Availability depends on the provider configured via Groq client.
 # We'll pass them through to call_groq; if unavailable, the fallback logic remains active when client is None.
-MODEL_ANALYSIS_A = "llama3-70b-8192"          # Stage 1A (amendment analysis agent A)
-MODEL_ANALYSIS_B = "llama-3.3-70b-versatile"           # Stage 1B (amendment analysis agent B)
+MODEL_ANALYSIS_A = "gemma2-9b-it"          # Stage 1A (amendment analysis agent A)
+MODEL_ANALYSIS_B = "openai/gpt-oss-20b"           # Stage 1B (amendment analysis agent B)
 MODEL_DETAILS = "openai/gpt-oss-120b"        # Stage 2 (relevance & detailed profile match)
 MODEL_COMPLIANCE = "openai/gpt-oss-20b"      # Stage 3/4 (evidence-rich compliance checks)
 MODEL_OPTIMIZE = "deepseek-r1-distill-llama-70b"  # Stage 5 (comprehensive aggregation & prioritization)
@@ -112,6 +257,32 @@ class AmendmentAnalyzer:
                     raise
             self.log_stage("ERROR", f"Groq API call failed: {str(e)}")
             raise
+    
+    def _filter_hindi_content(self, text: str) -> str:
+        """Filter out Hindi/Devanagari content from text, keeping only English content"""
+        if not text:
+            return ""
+        
+        # Split into lines and keep only lines with mostly English text
+        english_lines = []
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Count Devanagari characters (Hindi)
+            devanagari_chars = re.findall(r'[\u0900-\u097F]', line)
+            devanagari_ratio = len(devanagari_chars) / max(1, len(line))
+            
+            # Count English alphabetic characters
+            english_chars = re.findall(r'[a-zA-Z]', line)
+            english_ratio = len(english_chars) / max(1, len(line))
+            
+            # Keep line if it has more English than Hindi, or if it's mostly numbers/symbols
+            if english_ratio > devanagari_ratio or (english_ratio + devanagari_ratio) < 0.3:
+                english_lines.append(line)
+        
+        return "\n".join(english_lines)
 
     # -------- File helpers --------
     @staticmethod
@@ -142,23 +313,28 @@ class AmendmentAnalyzer:
         return out
 
     def analyze_amendments_batch(self, amendments: List[Dict], stage_label: str, model: str) -> List[Dict]:
-        """Stage 1 batch analysis helper: analyze a provided list of amendments.
-        Writes per-batch JSON logs and returns structured summaries.
-        """
+        """Stage 1 batch analysis helper with Hindi content filtering"""
         count = len(amendments)
         self.log_stage(stage_label, f"Starting analysis of {count} amendments")
 
-        amendment_texts = "\n\n".join([
-            f"### {a['title']}\nDate: {a['date']}\n{a['content'][:2000]}..."
-            for a in amendments
-        ])
+        # Filter Hindi content from amendment texts
+        filtered_amendment_texts = []
+        for a in amendments:
+            content = a.get('content', '')
+            # Filter out Hindi content
+            filtered_content = self._filter_hindi_content(content)
+            filtered_amendment_texts.append(
+                f"### {a['title']}\nDate: {a['date']}\n{filtered_content[:2000]}..."
+            )
+
+        amendment_texts = "\n\n".join(filtered_amendment_texts)
 
         prompt = (
             "You are a compliance expert.\n\n"
-            "**Task**: Analyze these latest FSSAI amendments and provide concise summaries focusing on key compliance requirements.\n\n"
+            "**Task**: Analyze these latest regulatory amendments and provide concise summaries focusing on key compliance requirements.\n\n"
+            "**Important**: IGNORE ANY HINDI LANGUAGE CONTENT. Focus only on English text.\n\n"
             "**Amendments**:\n" + amendment_texts + "\n\n"
             "**Instructions**:\n"
-            "SKIP HINDI CONTENT\n"
             "1. For each amendment, extract:\n"
             "   - Purpose/scope (1-2 sentences)\n"
             "   - Key requirements (5-8 highly specific points, quote where possible)\n"
@@ -292,15 +468,19 @@ class AmendmentAnalyzer:
             raise
 
     def check_documents_against_amendments(self, docs_texts: List[Tuple[str, str]], stage_name: str) -> Dict:
-        """Generic document compliance check for a batch of company documents.
-        docs_texts: list of tuples (filename, extracted_text)
-        Returns a JSON-serializable dict summarizing compliance per amendment and document.
-        """
+        """Generic document compliance check with Hindi content filtering"""
         self.log_stage(stage_name, f"Checking {len(docs_texts)} company documents against {len(self.current_amendments)} amendments")
 
+        # Filter Hindi content from document texts
+        filtered_docs = []
+        for fn, txt in docs_texts:
+            filtered_txt = self._filter_hindi_content(txt)
+            filtered_docs.append((fn, filtered_txt))
+
         docs_block = "\n\n".join([
-            f"### {fn}\n{(txt or '')[:4000]}" for fn, txt in docs_texts
+            f"### {fn}\n{(txt or '')[:4000]}" for fn, txt in filtered_docs
         ])
+    
         amendments_text = "\n\n".join([
             f"### {a['title']}\nSummary: {a.get('summary','')}\nRequirements:\n- " + "\n- ".join(a.get('requirements', []) or [])
             for a in self.current_amendments
@@ -375,8 +555,8 @@ class AmendmentAnalyzer:
             "You are a compliance program manager and a dramatic, persuasive writer.\n\n"
             "Combine the following compliance assessments into a single comprehensive report with clear prioritization and department-wise actions. DO NOT REMOVE DETAILINGS FROM THE REPORTS. Write in an impactful, vivid tone. If evidence is thin, you may make small, reasonable assumptions to craft a compelling narrative.\n"
             "Output strict JSON only.\n\n"
-            "Input A (first 2 docs):\n" + json.dumps(first_batch)[:5005] + "\n\n"
-            "Input B (next 3 docs):\n" + json.dumps(second_batch)[:5005] + "\n\n"
+            "Input A (first 2 docs):\n" + json.dumps(first_batch)[:8000] + "\n\n"
+            "Input B (next 3 docs):\n" + json.dumps(second_batch)[:8000] + "\n\n"
             "Required JSON schema (ensure you propagate any deadlines; when present, avoid returning \"Unknown\"):\n"
             "{\n"
             "  \"compliance_report\": {\n"
@@ -524,53 +704,81 @@ class AmendmentAnalyzer:
             raise
 
     def run_full_chain(self, company_data: Dict, uploads_dir: str) -> Dict:
-        """Execute the required 5-stage pipeline using on-disk PDFs.
-        - Amendments are the first 5 PDFs from backend/data/pdfs
-        - Company uploads are taken from uploads_dir (first 2, then next 3)
-        """
+        """Execute the required 5-stage pipeline using filtered amendments from filtered_amms folder."""
         self.log_stage("START", f"Beginning analysis for {company_data.get('name','Company')}")
 
-        # Load first 6 amendments from backend/data/pdfs
-        pdfs_dir = os.path.join(backend_dir, "data", "pdfs")
-        amendments = self._load_pdf_dicts_from_dir(pdfs_dir, limit=6)
+        # Load filtered amendments from backend/data/filtered_amms/
+        from vigilo_utils import get_latest_filtered_amendments
+        filtered_amendments = get_latest_filtered_amendments()
+        
+        if not filtered_amendments:
+            self.log_stage("WARNING", "No filtered amendments found. Falling back to raw PDFs directory.")
+            # Fallback to original behavior
+            pdfs_dir = os.path.join(backend_dir, "data", "pdfs")
+            amendments = self._load_pdf_dicts_from_dir(pdfs_dir, limit=6)
+        else:
+            self.log_stage("INFO", f"Loaded {len(filtered_amendments)} filtered amendments")
+            # Extract text from the PDF paths in filtered amendments
+            amendments = []
+            for amendment in filtered_amendments:
+                pdf_path = amendment.get("pdf_path")
+                if pdf_path and os.path.exists(pdf_path):
+                    text = extract_text_from_file(pdf_path)
+                    # Filter out Hindi content
+                    text = self._filter_hindi_content(text)
+                    amendments.append({
+                        "title": amendment.get("title", "Untitled"),
+                        "date": amendment.get("date", ""),
+                        "content": text or "",
+                        "source_path": pdf_path,
+                        "source": amendment.get("source", "Unknown"),
+                        "document_id": amendment.get("document_id", "")
+                    })
+                else:
+                    self.log_stage("WARNING", f"PDF path not found for amendment: {amendment.get('title')}")
+
         self._write_json("inputs_amendments.json", {"amendments": amendments})
 
-        # Stage 1A: first 3
-        first3 = amendments[:3]
-        try:
-            batch1 = self.analyze_amendments_batch(first3, stage_label="STAGE 1A", model=MODEL_ANALYSIS_A)
-        except Exception as e:
-            self.log_stage("STAGE 1A", f"Error: {e}. Proceeding with naive summaries for batch 1.")
-            batch1 = [{
-                "title": a.get("title", "Untitled"),
-                "summary": (a.get("content", "")[:200] + "...") if a.get("content") else a.get("title", ""),
-                "requirements": [],
-                "affected_businesses": [],
-                "impact": "Medium"
-            } for a in first3]
-            self._write_json("stage_1a_amendment_summaries.json", {"amendments": batch1})
+        # Split into 3 agents for analysis
+        agent_count = 3
+        amendments_per_agent = len(amendments) // agent_count
+        remainder = len(amendments) % agent_count
+        
+        agent_batches = []
+        start = 0
+        for i in range(agent_count):
+            end = start + amendments_per_agent + (1 if i < remainder else 0)
+            agent_batches.append(amendments[start:end])
+            start = end
 
-        # Stage 1B: next 3
-        next3 = amendments[3:6]
-        try:
-            batch2 = self.analyze_amendments_batch(next3, stage_label="STAGE 1B", model=MODEL_ANALYSIS_B)
-        except Exception as e:
-            self.log_stage("STAGE 1B", f"Error: {e}. Proceeding with naive summaries for batch 2.")
-            batch2 = [{
-                "title": a.get("title", "Untitled"),
-                "summary": (a.get("content", "")[:200] + "...") if a.get("content") else a.get("title", ""),
-                "requirements": [],
-                "affected_businesses": [],
-                "impact": "Medium"
-            } for a in next3]
-            self._write_json("stage_1b_amendment_summaries.json", {"amendments": batch2})
+        # Stage 1: Three agents analyzing amendments in parallel
+        analyzed_batches = []
+        agent_models = [MODEL_ANALYSIS_A, MODEL_ANALYSIS_B, "openai/gpt-oss-20b"]  # Third agent
+        
+        for i, batch in enumerate(agent_batches):
+            if not batch:
+                continue
+                
+            stage_label = f"STAGE 1-AGENT{i+1}"
+            try:
+                analyzed = self.analyze_amendments_batch(batch, stage_label=stage_label, model=agent_models[i])
+                analyzed_batches.extend(analyzed)
+            except Exception as e:
+                self.log_stage(stage_label, f"Error: {e}. Proceeding with naive summaries.")
+                naive_batch = [{
+                    "title": a.get("title", "Untitled"),
+                    "summary": (a.get("content", "")[:200] + "...") if a.get("content") else a.get("title", ""),
+                    "requirements": [],
+                    "affected_businesses": [],
+                    "impact": "Medium"
+                } for a in batch]
+                analyzed_batches.extend(naive_batch)
+                self._write_json(f"stage_1_agent{i+1}_summaries.json", {"amendments": naive_batch})
 
-        # Combine Stage 1A + 1B
-        combined_amendments = (batch1 or []) + (batch2 or [])
-        self.current_amendments = combined_amendments
-        self._write_json("stage1_combined_summaries.json", {"amendments": combined_amendments})
+        self.current_amendments = analyzed_batches
+        self._write_json("stage1_combined_summaries.json", {"amendments": analyzed_batches})
 
-        # Stage 2
+        # Stage 2: Filter by company profile
         try:
             self.filter_by_company_profile(company_data)
         except Exception as e:
@@ -579,10 +787,16 @@ class AmendmentAnalyzer:
 
         # Prepare company documents from uploads_dir
         upload_paths = AmendmentAnalyzer._first_n_pdfs_from(uploads_dir, limit=5)
-        upload_texts: List[Tuple[str, str]] = [(os.path.basename(p), extract_text_from_file(p) or "") for p in upload_paths]
+        upload_texts: List[Tuple[str, str]] = []
+        for p in upload_paths:
+            text = extract_text_from_file(p) or ""
+            # Filter out Hindi content from company documents too
+            text = self._filter_hindi_content(text)
+            upload_texts.append((os.path.basename(p), text))
+        
         self._write_json("inputs_company_uploads.json", {"files": [u[0] for u in upload_texts]})
 
-        # Stage 3: first 2
+        # Stage 3: first 2 documents
         first2 = upload_texts[:2]
         try:
             stage3_res = self.check_documents_against_amendments(first2, stage_name="STAGE 3")
@@ -591,7 +805,7 @@ class AmendmentAnalyzer:
             stage3_res = {"document_compliance": []}
             self._write_json("stage3_doc_compliance.json", stage3_res)
 
-        # Stage 4: next 3
+        # Stage 4: next 3 documents
         next3 = upload_texts[2:5]
         try:
             stage4_res = self.check_documents_against_amendments(next3, stage_name="STAGE 4")

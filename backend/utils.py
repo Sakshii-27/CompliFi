@@ -380,6 +380,38 @@ def extract_text_from_file(path: str) -> str:
     # Image/Docx OCR not implemented in this basic version
     return ""
 
+
+def extract_excerpt(text: str, max_lines: int = 7) -> str:
+    """Return the first `max_lines` non-empty lines from `text` as a single string.
+    Filters out non-English text and excessive formatting.
+    """
+    if not text:
+        return ""
+    
+    # Split into lines and clean
+    lines = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Filter out lines that are mostly non-English (Hindi/Devanagari characters)
+        devanagari_chars = re.findall(r'[\u0900-\u097F]', line)
+        if len(devanagari_chars) / max(1, len(line)) > 0.3:  # More than 30% Devanagari
+            continue
+            
+        # Filter out lines that are mostly numbers/special chars
+        alpha_chars = re.findall(r'[a-zA-Z]', line)
+        if len(alpha_chars) / max(1, len(line)) < 0.2:  # Less than 20% alphabetic
+            continue
+            
+        lines.append(line)
+        if len(lines) >= max_lines:
+            break
+    
+    # Join with space to create a readable excerpt
+    return " ".join(lines[:max_lines])
+
 def chunk_text(text: str, metadata: Dict) -> List[Document]:
     """Split text into chunks with metadata"""
     text_splitter = RecursiveCharacterTextSplitter(
@@ -429,7 +461,10 @@ def update_vector_db() -> int:
         if not text:
             print("No text extracted")
             continue
-            
+        
+        # Extract meaningful description (first few meaningful sentences)
+        description = extract_description(text)
+        
         # Prepare metadata
         metadata = {
             "title": notification["title"],
@@ -437,7 +472,8 @@ def update_vector_db() -> int:
             "source": notification["source"],
             "pdf_url": notification["pdf_url"],
             "pdf_path": pdf_path,
-            "document_id": hashlib.md5(notification["pdf_url"].encode()).hexdigest()
+            "document_id": hashlib.md5(notification["pdf_url"].encode()).hexdigest(),
+            "description": description  # Add description field
         }
         
         print("Chunking text and adding to vector store")
@@ -455,6 +491,39 @@ def update_vector_db() -> int:
         vector_store.persist()
     
     return new_count
+
+def extract_description(text: str, max_sentences: int = 3) -> str:
+    """Extract meaningful description from text"""
+    if not text:
+        return ""
+    
+    # Split into sentences
+    sentences = re.split(r'[.!?]+', text)
+    meaningful_sentences = []
+    
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        
+        # Filter out short sentences and those with too many special chars
+        if len(sentence) < 20:
+            continue
+            
+        # Filter out non-English sentences
+        devanagari_chars = re.findall(r'[\u0900-\u097F]', sentence)
+        if len(devanagari_chars) / max(1, len(sentence)) > 0.2:
+            continue
+            
+        # Look for sentences that seem like regulatory content
+        regulatory_keywords = ['regulation', 'amendment', 'standard', 'requirement', 
+                              'compliance', 'labeling', 'safety', 'food', 'product']
+        if any(keyword in sentence.lower() for keyword in regulatory_keywords):
+            meaningful_sentences.append(sentence)
+            if len(meaningful_sentences) >= max_sentences:
+                break
+    
+    return " ".join(meaningful_sentences) if meaningful_sentences else extract_excerpt(text, 2)
 
 def update_rbi_only() -> int:
     """Update only RBI notifications without affecting FSSAI"""
@@ -485,7 +554,8 @@ def update_rbi_only() -> int:
             "source": notification["source"],
             "pdf_url": notification["pdf_url"],
             "pdf_path": pdf_path,
-            "document_id": hashlib.md5(notification["pdf_url"].encode()).hexdigest()
+            "document_id": hashlib.md5(notification["pdf_url"].encode()).hexdigest(),
+            # RBI: no short excerpt stored (keep metadata minimal)
         }
         
         # Only add to vector store if text was extracted, but always save metadata
@@ -549,7 +619,63 @@ def get_latest_rbi_amendments(limit: int = 6) -> List[Dict]:
         })
     return results
 
+
+def get_latest_by_sources(counts: Dict[str, int]) -> List[Dict]:
+    """Return a combined list of latest amendments per source.
+    counts: mapping like {"FSSAI":4, "DGFT":3, "GST":3}
+    Result preserves ordering: FSSAI items first (most recent), then DGFT, then GST.
+    """
+    out: List[Dict] = []
+    # FSSAI uses general metadata file
+    if counts.get("FSSAI", 0) > 0:
+        meta = load_metadata()
+        meta_sorted = sorted([m for m in meta if m.get("source") == "FSSAI"], key=lambda m: _parse_date(m.get("date", "")), reverse=True)
+        for m in meta_sorted[: counts.get("FSSAI")]:
+            out.append({
+                "title": m.get("title", ""),
+                "date": m.get("date", "Unknown"),
+                # Provide the short preview under `description` for FSSAI
+                "description": m.get("description", ""),
+                "pdf_url": m.get("pdf_url", ""),
+                "pdf_path": m.get("pdf_path", ""),
+                "document_id": m.get("document_id", hashlib.md5(m.get("pdf_url","").encode()).hexdigest()),
+                "source": "FSSAI"
+            })
+
+    if counts.get("DGFT", 0) > 0:
+        meta = load_dgft_metadata()
+        meta_sorted = sorted(meta, key=lambda m: _parse_date(m.get("date", "")), reverse=True)
+        for m in meta_sorted[: counts.get("DGFT")]:
+            out.append({
+                "title": m.get("title", ""),
+                "date": m.get("date", "Unknown"),
+                # Use the DGFT-provided description (if any); do NOT rely on an excerpt
+                "description": m.get("description", ""),
+                "pdf_url": m.get("pdf_url", ""),
+                "pdf_path": m.get("pdf_path", ""),
+                "document_id": m.get("document_id"),
+                "source": "DGFT"
+            })
+
+    if counts.get("GST", 0) > 0:
+        meta = load_gst_metadata()
+        meta_sorted = sorted(meta, key=lambda m: _parse_date(m.get("date", "")), reverse=True)
+        for m in meta_sorted[: counts.get("GST")]:
+            out.append({
+                "title": m.get("title", ""),
+                "date": m.get("date", "Unknown"),
+                # Use GST description field (no excerpt)
+                "description": m.get("description", ""),
+                "pdf_url": m.get("pdf_url", ""),
+                "pdf_path": m.get("pdf_path", ""),
+                "document_id": m.get("document_id"),
+                "source": "GST"
+            })
+
+    return out
+
 def _load_company_json(company_id: str) -> Optional[Dict]:
+    """Load complete company JSON data"""
     path = os.path.join(DATA_DIR, "companies", f"{company_id}.json")
     if os.path.exists(path):
         with open(path, "r") as f:
@@ -821,7 +947,8 @@ def update_dgft_only(target_pdf_dir: str = None) -> int:
             "source": "DGFT",
             "pdf_url": pdf_url,
             "pdf_path": pdf_path,
-            "document_id": hashlib.md5(pdf_url.encode()).hexdigest()
+            "document_id": hashlib.md5(pdf_url.encode()).hexdigest(),
+            # Do NOT store an "excerpt" for DGFT
         }
 
         if text:
@@ -1142,3 +1269,95 @@ def update_gst_only(target_pdf_dir: str = None) -> int:
         save_gst_metadata(existing)
 
     return new_count
+
+def save_filtered_amendments(amendments: List[Dict], company_id: Optional[str] = None):
+    """Save filtered amendments to backend/data/filtered_amms/"""
+    filtered_dir = os.path.join(DATA_DIR, "filtered_amms")
+    os.makedirs(filtered_dir, exist_ok=True)
+    
+    # Create filename with timestamp and optional company ID
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"filtered_{timestamp}"
+    if company_id:
+        filename += f"_{company_id}"
+    filename += ".json"
+    
+    filepath = os.path.join(filtered_dir, filename)
+    
+    # Prepare data to save
+    data_to_save = {
+        "timestamp": timestamp,
+        "company_id": company_id,
+        "total_count": len(amendments),
+        "amendments": amendments
+    }
+    
+    # Save to file
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data_to_save, f, indent=2, ensure_ascii=False)
+    
+    print(f"Saved {len(amendments)} filtered amendments to {filepath}")
+    return filepath
+
+def backfill_metadata_excerpts() -> Dict[str, int]:
+    """Scan ALL existing metadata entries and populate description fields."""
+    results = {"FSSAI": 0, "DGFT": 0, "GST": 0, "RBI": 0}
+
+    # FSSAI general metadata - force description for ALL entries
+    meta = load_metadata()
+    updated = 0
+    for m in meta:
+        if m.get("source") == "FSSAI":
+            path = m.get("pdf_path")
+            if path and os.path.exists(path):
+                text = extract_text_from_file(path)
+                if text:
+                    # Always regenerate description for FSSAI
+                    m["description"] = extract_description(text)
+                    updated += 1
+    
+    if updated:
+        save_metadata(meta)
+    results["FSSAI"] = updated
+
+    # For DGFT and GST, use existing description or title
+    dgft_meta = load_dgft_metadata()
+    gst_meta = load_gst_metadata()
+    
+    # Ensure DGFT entries have description
+    for m in dgft_meta:
+        if not m.get("description"):
+            m["description"] = m.get("title", "DGFT Notification")
+    
+    # Ensure GST entries have description  
+    for m in gst_meta:
+        if not m.get("description"):
+            m["description"] = m.get("title", "GST Notification")
+    
+    save_dgft_metadata(dgft_meta)
+    save_gst_metadata(gst_meta)
+
+    return results
+
+def get_latest_filtered_amendments() -> List[Dict]:
+    """Get the most recent filtered amendments from backend/data/filtered_amms/"""
+    filtered_dir = os.path.join(DATA_DIR, "filtered_amms")
+    if not os.path.exists(filtered_dir):
+        return []
+    
+    # Find the latest filtered amendments file
+    files = [f for f in os.listdir(filtered_dir) if f.startswith("filtered_") and f.endswith(".json")]
+    if not files:
+        return []
+    
+    # Sort by timestamp (newest first)
+    files.sort(reverse=True)
+    latest_file = files[0]
+    
+    try:
+        with open(os.path.join(filtered_dir, latest_file), 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return data.get("amendments", [])
+    except Exception as e:
+        print(f"Error loading filtered amendments: {e}")
+        return []

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from utils import (
+from vigilo_utils import (
     update_vector_db,
     get_metadata_store,
     store_company_data,
@@ -19,7 +19,9 @@ from utils import (
     update_dgft_only,
     load_dgft_metadata,
     update_gst_only,
-    load_gst_metadata
+    load_gst_metadata,
+    save_filtered_amendments,
+    get_latest_by_sources
 )
 from typing import List, Dict, Optional, Any
 from fastapi import UploadFile, Form, File, HTTPException
@@ -29,8 +31,10 @@ import json
 import os
 from fastapi.responses import FileResponse
 from prompt_chain import AmendmentAnalyzer
+from prompt_chain import select_relevant_amendments
+from vigilo_utils import backfill_metadata_excerpts
 
-app = FastAPI(title="CompliFi FSSAI Compliance API")
+app = FastAPI(title="Vigilo FSSAI Compliance API")
 
 # CORS configuration
 app.add_middleware(
@@ -43,7 +47,7 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"msg": "CompliFi FSSAI Compliance API Running 🚀"}
+    return {"msg": "Vigilo FSSAI Compliance API Running 🚀"}
 
 @app.get("/update")
 def update() -> Dict[str, int]:
@@ -80,17 +84,17 @@ def list_notifications() -> List[Dict]:
 
 @app.get("/test-scrape")
 def test_scrape():
-    from utils import scrape_fssai_notifications
+    from vigilo_utils import scrape_fssai_notifications
     return scrape_fssai_notifications()
 
 @app.get("/test-scrape-rbi")
 def test_scrape_rbi():
-    from utils import scrape_rbi_notifications
+    from vigilo_utils import scrape_rbi_notifications
     return scrape_rbi_notifications()
 
 @app.get("/test-scrape-dgft")
 def test_scrape_dgft():
-    from utils import scrape_dgft_notifications
+    from vigilo_utils import scrape_dgft_notifications
     return scrape_dgft_notifications()
 
 @app.get("/seed/synthetic")
@@ -141,8 +145,116 @@ def list_gst_notifications() -> List[Dict]:
 @app.get("/test-scrape-gst")
 def test_scrape_gst():
     """Test GST scraping"""
-    from utils import scrape_gst_notifications
+    from vigilo_utils import scrape_gst_notifications
     return scrape_gst_notifications()
+
+
+# @app.get("/latest-relevant")
+# def latest_relevant(company_id: Optional[str] = None):
+#     """Return the most recent and (likely) most relevant amendments:
+#     - 4 from FSSAI
+#     - 3 from DGFT
+#     - 3 from GST
+#     Each item contains title, date, excerpt, pdf_url, document_id and source.
+#     """
+#     try:
+#         # Load recent 10 from each source
+#         fssai_meta = get_metadata_store()  # general metadata.json
+#         fssai_sorted = sorted([m for m in fssai_meta if m.get("source") == "FSSAI"], key=lambda m: (m.get("date") or ""), reverse=True)[:10]
+
+#         dgft_sorted = load_dgft_metadata()
+#         dgft_sorted = sorted(dgft_sorted, key=lambda m: (m.get("date") or ""), reverse=True)[:10]
+
+#         gst_sorted = load_gst_metadata()
+#         gst_sorted = sorted(gst_sorted, key=lambda m: (m.get("date") or ""), reverse=True)[:10]
+
+#         # Fetch company profile if provided (pass minimal fields to the AI)
+#         company_profile = None
+#         if company_id:
+#             company_profile = get_company_info(company_id)
+
+#         print(f"/latest-relevant: company_id={company_id} fssai_candidates={len(fssai_sorted)} dgft_candidates={len(dgft_sorted)} gst_candidates={len(gst_sorted)}")
+#         # Use AI (Groq) per-source to pick relevant items with requested counts
+#         selected_fssai = select_relevant_amendments(fssai_sorted, top_n=5, source="FSSAI", company=company_profile)
+#         selected_dgft = select_relevant_amendments(dgft_sorted, top_n=3, source="DGFT", company=company_profile)
+#         selected_gst = select_relevant_amendments(gst_sorted, top_n=3, source="GST", company=company_profile)
+
+#         print(f"/latest-relevant: selected fssai={len(selected_fssai)} dgft={len(selected_dgft)} gst={len(selected_gst)}")
+#         return {"FSSAI": selected_fssai, "DGFT": selected_dgft, "GST": selected_gst}
+#     except Exception as e:
+#         print(f"Error in latest_relevant: {e}")
+#         return {"FSSAI": [], "DGFT": [], "GST": []}
+def _load_company_json(company_id: str) -> Optional[Dict]:
+    """Load complete company JSON data"""
+    base_dir = os.path.dirname(__file__)
+    path = os.path.join(base_dir, "data", "companies", f"{company_id}.json")
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            try:
+                return json.load(f)
+            except Exception:
+                return None
+    return None
+
+@app.get("/latest-relevant")
+def latest_relevant(company_id: Optional[str] = None):
+    """Return the most recent and relevant amendments: 5 FSSAI, 4 DGFT, 3 GST"""
+    try:
+        # Load recent amendments from each source
+        fssai_meta = get_metadata_store()
+        fssai_sorted = sorted([m for m in fssai_meta if m.get("source") == "FSSAI"], 
+                             key=lambda m: (m.get("date") or ""), reverse=True)[:15]  # More candidates
+
+        dgft_meta = load_dgft_metadata()
+        dgft_sorted = sorted(dgft_meta, key=lambda m: (m.get("date") or ""), reverse=True)[:15]
+
+        gst_meta = load_gst_metadata()
+        gst_sorted = sorted(gst_meta, key=lambda m: (m.get("date") or ""), reverse=True)[:15]
+
+        # Fetch company profile
+        company_profile = None
+        if company_id:
+            company_profile = get_company_info(company_id)
+            # Also get company description
+            company_data = _load_company_json(company_id)
+            if company_data and company_data.get("optional_data"):
+                company_profile = company_profile or {}
+                company_profile["description"] = company_data["optional_data"].get("business_description", "")
+
+        print(f"/latest-relevant: company_id={company_id} fssai_candidates={len(fssai_sorted)} dgft_candidates={len(dgft_sorted)} gst_candidates={len(gst_sorted)}")
+        
+        # Select amendments with different models
+        selected_fssai = select_relevant_amendments(fssai_sorted, top_n=5, source="FSSAI", 
+                                                   company=company_profile, model="openai/gpt-oss-20b")
+        selected_dgft = select_relevant_amendments(dgft_sorted, top_n=5, source="DGFT", 
+                                                  company=company_profile, model="gemma2-9b-it")
+        selected_gst = select_relevant_amendments(gst_sorted, top_n=5, source="GST", 
+                                                 company=company_profile, model="gemma2-9b-it")
+
+        print(f"/latest-relevant: selected fssai={len(selected_fssai)} dgft={len(selected_dgft)} gst={len(selected_gst)}")
+        
+        # Combine all results
+        combined = selected_fssai + selected_dgft + selected_gst
+        
+        # Save filtered amendments to separate folder
+        save_filtered_amendments(combined, company_id)
+        
+        return combined
+        
+    except Exception as e:
+        print(f"Error in latest_relevant: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+@app.get("/backfill-excerpts")
+def backfill_excerpts():
+    """Scan existing metadata entries and populate excerpt fields where missing."""
+    try:
+        res = backfill_metadata_excerpts()
+        return {"status": "ok", "updated": res}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 @app.post("/company/submit")
 async def submit_company_data(
@@ -262,25 +374,42 @@ async def submit_company_data(
     store_company_data(company_data)
     return {"status": "success", "company_id": hash_company(company_name)}
 
+# @app.get("/compliance/check")
+# async def check_company_compliance(company_id: str):
+#     """Run the new 5-stage prompt chain for a company.
+
+#     This uses:
+#     - First 5 PDFs from backend/data/pdfs as amendments
+#     - Company info from backend/data/companies/<company_id>.json
+#     - First 2 and next 3 PDFs from backend/data/uploads as company docs
+#     Logs are saved under backend/data/logs/<company_id>/<timestamp>/
+#     """
+#     try:
+#         result = analyze_amendments_for_company(company_id)
+#         return {"status": "success", "result": result}
+#     except Exception as e:
+#         # Provide a clear error with hint
+#         raise HTTPException(status_code=400, detail=f"Compliance check failed: {e}")
+
+# def analyze_amendments_for_company(company_id: str) -> Dict:
+#     """Run the new 5-stage prompt chain using on-disk PDFs and company uploads."""
+#     company = get_company_info(company_id)
+#     if not company:
+#         raise ValueError("Company not found. Submit company data first.")
+#     uploads_dir = os.path.join(os.path.dirname(__file__), "data", "uploads")
+#     analyzer = AmendmentAnalyzer(company_id=company_id)
+#     return analyzer.run_full_chain(company, uploads_dir=uploads_dir)
 @app.get("/compliance/check")
 async def check_company_compliance(company_id: str):
-    """Run the new 5-stage prompt chain for a company.
-
-    This uses:
-    - First 5 PDFs from backend/data/pdfs as amendments
-    - Company info from backend/data/companies/<company_id>.json
-    - First 2 and next 3 PDFs from backend/data/uploads as company docs
-    Logs are saved under backend/data/logs/<company_id>/<timestamp>/
-    """
+    """Run the updated 5-stage prompt chain for a company using filtered amendments."""
     try:
         result = analyze_amendments_for_company(company_id)
         return {"status": "success", "result": result}
     except Exception as e:
-        # Provide a clear error with hint
         raise HTTPException(status_code=400, detail=f"Compliance check failed: {e}")
 
 def analyze_amendments_for_company(company_id: str) -> Dict:
-    """Run the new 5-stage prompt chain using on-disk PDFs and company uploads."""
+    """Run the updated 5-stage prompt chain using filtered amendments."""
     company = get_company_info(company_id)
     if not company:
         raise ValueError("Company not found. Submit company data first.")
