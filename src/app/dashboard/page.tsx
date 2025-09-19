@@ -243,13 +243,13 @@ interface TimelineSlot {
   actions: TimelineAction[];
 }
 
-interface Report {
-  by_amendment?: Finding[];
-  prioritized_actions?: TimelineAction[];
-  timeline?: TimelineSlot[];
-  overall_status?: string;
-  summary?: string;
-}
+// interface Report {
+//   by_amendment?: Finding[];
+//   prioritized_actions?: TimelineAction[];
+//   timeline?: TimelineSlot[];
+//   overall_status?: string;
+//   summary?: string;
+// }
 
 export default function DashboardPage() {
   const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
@@ -480,7 +480,7 @@ const [selectedTimeline, setSelectedTimeline] = useState<{ timeframe: string; ac
 
       // Build timeline sections: prefer backend-provided consolidated timeline if available
       const reportTimeline: { timeframe: string; actions: TimelineAction[] }[] = report.timeline || [];
-      let timelineSections: { timeframe: string; actions: any[] }[] = [];
+      let timelineSections: TimelineSlot[] = [];
       if (Array.isArray(reportTimeline) && reportTimeline.length) {
         timelineSections = reportTimeline.map((slot: TimelineSlot) => ({
           timeframe: slot.timeframe || 'Upcoming',
@@ -539,7 +539,7 @@ const [selectedTimeline, setSelectedTimeline] = useState<{ timeframe: string; ac
               'Imagery could be misleading about contents'
             ],
             productComposition: undefined
-          } as any);
+          } as TimelineAction);
         }
 
         timelineSections = [
