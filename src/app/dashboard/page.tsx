@@ -240,7 +240,22 @@ export default function DashboardPage() {
   const [notifications, setNotifications] = useState<{id: string; message: string; type: 'alert' | 'update'}[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Initializing compliance dashboard...");
-  const [selectedTimeline, setSelectedTimeline] = useState<{timeframe: string; actions: any[]} | null>(null);
+  interface TimelineAction {
+  department: string;
+  task: string;
+  steps?: string[];
+  urgency?: string;
+  amendments?: string[];
+  deadline?: string;
+  currentLabel?: string;
+  requiredLabel?: string;
+  labelRequirements?: string[];
+  currentIssues?: string[];
+  productComposition?: string;
+}
+
+const [selectedTimeline, setSelectedTimeline] = useState<{ timeframe: string; actions: TimelineAction[] } | null>(null);
+
 
   // Load company ID and initial data
   useEffect(() => {
@@ -432,35 +447,40 @@ export default function DashboardPage() {
 
       // Map backend Stage 5 report to UI model
       const report = result?.final_report?.compliance_report || {};
-      const byAmendment = (report.by_amendment || []) as Finding[];
-      const prioritized = (report.prioritized_actions || []) as any[];
+      const byAmendment: Finding[] = report.by_amendment || [];
+      const prioritized: TimelineAction[] = report.prioritized_actions || []; //error because of this
 
       // Build timeline sections: prefer backend-provided consolidated timeline if available
-      const reportTimeline = (report.timeline || []) as any[];
+      const reportTimeline: { timeframe: string; actions: TimelineAction[] }[] = report.timeline || [];
       let timelineSections: { timeframe: string; actions: any[] }[] = [];
       if (Array.isArray(reportTimeline) && reportTimeline.length) {
         timelineSections = reportTimeline.map((slot: any) => ({
           timeframe: slot.timeframe || 'Upcoming',
-          actions: (slot.actions || []).map((a: any) => ({
+          actions: (slot.actions || []).map((a: TimelineAction) => ({
             department: a.department || 'General',
             task: a.task || 'Action',
             steps: a.steps,
             urgency: a.urgency,
             amendments: a.amendments,
-            deadline: a.due || a.deadline || a.last_date || 'Unknown',
-          }))
+            deadline: a.deadline || 'Unknown',
+            currentLabel: a.currentLabel,
+            requiredLabel: a.requiredLabel,
+            labelRequirements: a.labelRequirements,
+            currentIssues: a.currentIssues,
+            productComposition: a.productComposition,
+}))
+
         })).filter(s => s.actions.length > 0);
       } else {
         // Fallback to building from prioritized actions
-        const timelineActions = prioritized.map((a: any) => ({
+        const timelineActions: TimelineAction[] = prioritized.map(a => ({
           department: a.department || 'General',
           task: a.task || 'Action',
           steps: undefined,
           urgency: a.urgency,
           amendments: undefined,
-          deadline: a.due || 'Unknown'
-        }));
-
+          deadline: a.deadline || 'Unknown' //changed a.due to a.deadline
+}));
         // Preserve chicory label comparison if relevant
         const hasChicory = byAmendment.some(a => (a.amendment_title || '').toLowerCase().includes('chicory') || (a.amendment_title || '').toLowerCase().includes('coffee'));
         if (hasChicory) {
