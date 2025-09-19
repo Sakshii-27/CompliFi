@@ -153,7 +153,7 @@ const LoginPage = ({
           </button>
 
           <div className="text-center">
-            <span className="text-gray-400">Don't have an account? </span>
+            <span className="text-gray-400">Don&apos;t have an account? </span>
             <button
               type="button"
               onClick={() => {
@@ -721,7 +721,7 @@ const Page = () => {
       } else {
         setErrors({ general: 'Invalid email or password. Please try again.' });
       }
-    } catch (error) {
+    } catch (_) {
       setErrors({ general: 'Login failed. Please try again.' });
     }
     
@@ -771,7 +771,7 @@ const Page = () => {
       } else {
         setErrors({ general: 'Email already exists. Please use a different email.' });
       }
-    } catch (error) {
+    } catch (_) {
       setErrors({ general: 'Registration failed. Please try again.' });
     }
     
@@ -803,7 +803,7 @@ const Page = () => {
       setSuccessMessage(`Password reset link sent to ${forgotEmail}`);
       setSuccessType('forgot');
       setCurrentPage('success');
-    } catch (error) {
+    } catch (_) {
       setErrors({ general: 'Failed to send reset email. Please try again.' });
     }
     
