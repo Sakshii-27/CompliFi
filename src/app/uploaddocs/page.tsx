@@ -857,7 +857,7 @@ SubmitComponentProps) => {
 
       try {
         await fetch(`${API_BASE}/update`);
-      } catch (e) {
+      } catch {
         /* noop */
       }
 
