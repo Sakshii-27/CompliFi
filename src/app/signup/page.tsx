@@ -721,7 +721,7 @@ const Page = () => {
       } else {
         setErrors({ general: 'Invalid email or password. Please try again.' });
       }
-    } catch (_) {
+    } catch {
       setErrors({ general: 'Login failed. Please try again.' });
     }
     
@@ -771,7 +771,7 @@ const Page = () => {
       } else {
         setErrors({ general: 'Email already exists. Please use a different email.' });
       }
-    } catch (_) {
+    } catch{
       setErrors({ general: 'Registration failed. Please try again.' });
     }
     
@@ -803,7 +803,7 @@ const Page = () => {
       setSuccessMessage(`Password reset link sent to ${forgotEmail}`);
       setSuccessType('forgot');
       setCurrentPage('success');
-    } catch (_) {
+    } catch {
       setErrors({ general: 'Failed to send reset email. Please try again.' });
     }
     
