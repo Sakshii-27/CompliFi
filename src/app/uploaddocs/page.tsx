@@ -862,11 +862,15 @@ SubmitComponentProps) => {
       }
 
       setSubmitted(true);
-    } catch (e: any) {
-      setError(e?.message || "Submission failed");
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (e: unknown) {
+  if (e instanceof Error) {
+    setError(e.message);
+  } else {
+    setError("Submission failed");
+  }
+} finally {
+  setIsSubmitting(false);
+}
   };
 
   if (submitted) {
