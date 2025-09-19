@@ -29,17 +29,17 @@ interface CompanyInfo {
   cin?: string;
 }
 
-interface RegulationCard {
-  id: string;
-  title: string;
-  summary: string;
-  impact: "High" | "Medium" | "Low";
-  sector: string[];
-  date: string;
-  views: number;
-  status: "New" | "Updated" | "Compliance Required";
-  tags: string[];
-}
+// interface RegulationCard {
+//   id: string;
+//   title: string;
+//   summary: string;
+//   impact: "High" | "Medium" | "Low";
+//   sector: string[];
+//   date: string;
+//   views: number;
+//   status: "New" | "Updated" | "Compliance Required";
+//   tags: string[];
+// }
 
 // Top-level step components (stable identity to avoid remounting inputs)
 interface CategorySelectionProps {
