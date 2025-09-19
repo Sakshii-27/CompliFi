@@ -224,6 +224,32 @@ interface ProductImpact {
   affected_aspects: string[];
   required_changes: string[];
 }
+interface TimelineAction {
+  department: string;
+  task: string;
+  steps?: string[];
+  urgency?: string;
+  amendments?: string[];
+  deadline?: string;
+  currentLabel?: string;
+  requiredLabel?: string;
+  labelRequirements?: string[];
+  currentIssues?: string[];
+  productComposition?: string;
+}
+
+interface TimelineSlot {
+  timeframe: string;
+  actions: TimelineAction[];
+}
+
+interface Report {
+  by_amendment?: Finding[];
+  prioritized_actions?: TimelineAction[];
+  timeline?: TimelineSlot[];
+  overall_status?: string;
+  summary?: string;
+}
 
 export default function DashboardPage() {
   const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
@@ -232,7 +258,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [progress, setProgress] = useState<string>("");
-  const [introLoading, setIntroLoading] = useState(true);
+  // const [introLoading, setIntroLoading] = useState(true);
   const [amendments, setAmendments] = useState<MetaItem[]>([]);
   const [activeStep, setActiveStep] = useState<number>(-1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -337,11 +363,13 @@ const [selectedTimeline, setSelectedTimeline] = useState<{ timeframe: string; ac
             for (const key of ['FSSAI', 'DGFT', 'GST']) {
               const list = payload[key];
               if (Array.isArray(list)) {
-                list.forEach((it: any) => {
-                  try { if (!it.source) it.source = key; } catch(e) {}
-                  merged.push(it as MetaItem);
-                });
-              }
+                list.forEach((it: MetaItem) => {
+                  if (!it.source) {
+                    it.source = key;
+                  }
+    merged.push(it);
+  });
+}
             }
             allAmendments = merged;
           }
@@ -385,7 +413,7 @@ const [selectedTimeline, setSelectedTimeline] = useState<{ timeframe: string; ac
       }
       
       setPageLoading(false);
-      setIntroLoading(false);
+      // setIntroLoading(false);
     };
     
     loadAmendments();
@@ -454,7 +482,7 @@ const [selectedTimeline, setSelectedTimeline] = useState<{ timeframe: string; ac
       const reportTimeline: { timeframe: string; actions: TimelineAction[] }[] = report.timeline || [];
       let timelineSections: { timeframe: string; actions: any[] }[] = [];
       if (Array.isArray(reportTimeline) && reportTimeline.length) {
-        timelineSections = reportTimeline.map((slot: any) => ({
+        timelineSections = reportTimeline.map((slot: TimelineSlot) => ({
           timeframe: slot.timeframe || 'Upcoming',
           actions: (slot.actions || []).map((a: TimelineAction) => ({
             department: a.department || 'General',
