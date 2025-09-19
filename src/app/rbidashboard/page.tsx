@@ -35,7 +35,19 @@ type Analysis = {
   initial_amendments?: number;
   relevant_amendments?: number;
   compliance_plan?: CompliancePlan;
-  detailed_amendments?: any[];
+  detailed_amendments?: {
+  title: string;
+  date: string;
+  summary?: string;
+  requirements?: string[];
+  relevance_reason?: string;
+  product_impacts?: {
+    product_name: string;
+    affected_aspects: string[];
+    required_changes: string[];
+  }[];
+  document_id?: string;
+}[];
 };
 
 type MetaItem = {
@@ -54,13 +66,13 @@ export default function FinanceDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [progress, setProgress] = useState<string>("");
-  const [introLoading, setIntroLoading] = useState(true);
   const [amendments, setAmendments] = useState<MetaItem[]>([]);
   const [activeStep, setActiveStep] = useState<number>(-1);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [notifications, setNotifications] = useState<{id: string; message: string; type: 'alert' | 'update'}[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
+  const [introLoading, setIntroLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Initializing compliance dashboard...");
 
   // Load company ID and initial data
@@ -459,7 +471,7 @@ const filteredAmendments = useMemo(() => {
     } finally {
       setLoading(false);
     }
-  }, [API_BASE, companyId, amendments]);
+  }, [companyId, amendments]);
 
   const dismissNotification = (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
@@ -577,6 +589,7 @@ const filteredAmendments = useMemo(() => {
             <div className="text-xs text-gray-500 mb-1">Current Agreement/Filing</div>
             <img 
               src= "/before.png"
+              alt="Current Document"
               className="rounded border border-gray-700 w-full h-auto"
             />
             <ul className="mt-2 space-y-1 text-xs text-red-400">
@@ -591,7 +604,8 @@ const filteredAmendments = useMemo(() => {
           <div>
             <div className="text-xs text-gray-500 mb-1">Required Compliance Updates</div>
             <img 
-              src= "/after.png" 
+              src= "/after.png"
+              alt="Required Document" 
               className="rounded border border-gray-700 w-full h-auto"
             />
             <ul className="mt-2 space-y-1 text-xs text-emerald-400">
@@ -686,7 +700,19 @@ const filteredAmendments = useMemo(() => {
     );
   };
 
-  const AmendmentCard = ({ amendment }: { amendment: any }) => (
+  const AmendmentCard = ({ amendment }: { amendment: {
+  title: string;
+  date: string;
+  summary?: string;
+  requirements?: string[];
+  relevance_reason?: string;
+  product_impacts?: {
+    product_name: string;
+    affected_aspects: string[];
+    required_changes: string[];
+  }[];
+  document_id?: string;
+} }) => (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors">
       <div className="flex items-start justify-between mb-3">
         <h3 className="text-lg font-medium text-white">{amendment.title}</h3>

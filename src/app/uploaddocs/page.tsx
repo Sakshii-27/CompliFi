@@ -110,7 +110,7 @@ const CategorySelection = ({
 
 interface CompanyDetailsProps {
   companyInfo: CompanyInfo;
-  setCompanyInfo: (updater: any) => void;
+  setCompanyInfo: (updater: (prev: CompanyInfo) => CompanyInfo) => void;
   selectedCategory: string;
   setCurrentStep: (s: string) => void;
 }
@@ -776,7 +776,7 @@ interface SubmitComponentProps {
   selectedCategory: string;
   setCurrentStep: (s: string) => void;
   setCompanyInfo: (c: CompanyInfo) => void;
-  setUploadedFiles: (u: { [k: string]: File[] }) => void;
+  setUploadedFiles: (u: { [key: string]: File[] }) => void;
   setSelectedCategory: (s: string) => void;
   // foodDocuments: { id: string; name: string; required: boolean; description: string }[];
   documents: {
@@ -1158,49 +1158,46 @@ const Page = () => {
   const [uploadedFiles, setUploadedFiles] = useState<{ [key: string]: File[] }>(
     {}
   );
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("Most Recent");
-  const [showFilters, setShowFilters] = useState(true);
 
   // Mock data for regulations
-  const regulations: RegulationCard[] = [
-    {
-      id: "1",
-      title: "New FSSAI Packaging Guidelines for Organic Products",
-      summary:
-        "Updated labeling requirements for organic food products including mandatory QR codes and traceability information.",
-      impact: "High",
-      sector: ["Food & Beverages", "Manufacturing"],
-      date: "2025-08-15",
-      views: 1247,
-      status: "New",
-      tags: ["FSSAI", "Organic", "Labeling", "Compliance"],
-    },
-    {
-      id: "2",
-      title: "GST Rate Changes for Healthcare Products",
-      summary:
-        "Revised GST rates for medical devices and pharmaceutical products effective from September 2025.",
-      impact: "High",
-      sector: ["Healthcare", "Finance"],
-      date: "2025-08-14",
-      views: 892,
-      status: "Compliance Required",
-      tags: ["GST", "Healthcare", "Tax", "Medical Devices"],
-    },
-    {
-      id: "3",
-      title: "Export Documentation Updates for Technology Products",
-      summary:
-        "New export compliance requirements for AI and semiconductor products.",
-      impact: "Medium",
-      sector: ["Technology", "Export"],
-      date: "2025-08-13",
-      views: 634,
-      status: "Updated",
-      tags: ["Export", "Technology", "AI", "Semiconductors"],
-    },
-  ];
+  // const regulations: RegulationCard[] = [
+  //   {
+  //     id: "1",
+  //     title: "New FSSAI Packaging Guidelines for Organic Products",
+  //     summary:
+  //       "Updated labeling requirements for organic food products including mandatory QR codes and traceability information.",
+  //     impact: "High",
+  //     sector: ["Food & Beverages", "Manufacturing"],
+  //     date: "2025-08-15",
+  //     views: 1247,
+  //     status: "New",
+  //     tags: ["FSSAI", "Organic", "Labeling", "Compliance"],
+  //   },
+  //   {
+  //     id: "2",
+  //     title: "GST Rate Changes for Healthcare Products",
+  //     summary:
+  //       "Revised GST rates for medical devices and pharmaceutical products effective from September 2025.",
+  //     impact: "High",
+  //     sector: ["Healthcare", "Finance"],
+  //     date: "2025-08-14",
+  //     views: 892,
+  //     status: "Compliance Required",
+  //     tags: ["GST", "Healthcare", "Tax", "Medical Devices"],
+  //   },
+  //   {
+  //     id: "3",
+  //     title: "Export Documentation Updates for Technology Products",
+  //     summary:
+  //       "New export compliance requirements for AI and semiconductor products.",
+  //     impact: "Medium",
+  //     sector: ["Technology", "Export"],
+  //     date: "2025-08-13",
+  //     views: 634,
+  //     status: "Updated",
+  //     tags: ["Export", "Technology", "AI", "Semiconductors"],
+  //   },
+  // ];
 
   const categories = [
     {
