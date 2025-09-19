@@ -234,8 +234,8 @@ const DataPulse = ({ top, left, delay }: DataPulseProps) => (
               <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Reimagined</span>
             </h3>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              From real-time amendment tracking to AI-powered impact analysis, we&apos;ve built the future of compliance management.
-            </p>
+  From real-time amendment tracking to AI-powered impact analysis, we&#39;ve built the future of compliance management.
+</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
