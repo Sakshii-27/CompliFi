@@ -1,5 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { TestTube, Bell, Settings, Calendar, FileText, ChevronRight, AlertTriangle, CheckCircle, X, Filter, Search, TrendingUp, Shield, DollarSign } from 'lucide-react';
 
 type CompliancePlan = {
@@ -35,8 +36,36 @@ type Analysis = {
   initial_amendments?: number;
   relevant_amendments?: number;
   compliance_plan?: CompliancePlan;
-  detailed_amendments?: any[];
+  detailed_amendments?: {
+  title: string;
+  date: string;
+  summary?: string;
+  requirements?: string[];
+  relevance_reason?: string;
+  product_impacts?: {
+    product_name: string;
+    affected_aspects: string[];
+    required_changes: string[];
+  }[];
+  document_id?: string;
+}[];
 };
+interface ProductImpact {
+  product_name: string;
+  affected_aspects: string[];
+  required_changes: string[];
+}
+
+interface DetailedAmendment {
+  title: string;
+  date: string;
+  summary?: string;
+  requirements?: string[];
+  relevance_reason?: string;
+  product_impacts?: ProductImpact[];
+  document_id?: string;
+}
+
 
 type MetaItem = {
   title: string;
@@ -54,13 +83,13 @@ export default function FinanceDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [progress, setProgress] = useState<string>("");
-  const [introLoading, setIntroLoading] = useState(true);
   const [amendments, setAmendments] = useState<MetaItem[]>([]);
   const [activeStep, setActiveStep] = useState<number>(-1);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [notifications, setNotifications] = useState<{id: string; message: string; type: 'alert' | 'update'}[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
+  const [_introLoading, setIntroLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Initializing compliance dashboard...");
 
   // Load company ID and initial data
@@ -446,20 +475,21 @@ const filteredAmendments = useMemo(() => {
         }
       ]);
 
-    } catch (e: any) {
-      setError(e?.message || 'Analysis failed. Please try again.');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Analysis failed. Please try again.';
+      setError(errorMessage);
       setNotifications(prev => [
-        ...prev,
-        {
-          id: 'error',
-          message: 'Compliance analysis failed',
-          type: 'alert'
-        }
-      ]);
-    } finally {
+    ...prev,
+    {
+      id: 'error',
+      message: 'Compliance analysis failed',
+      type: 'alert'
+    }
+  ]);
+} finally {
       setLoading(false);
     }
-  }, [API_BASE, companyId, amendments]);
+  }, [companyId, amendments]);
 
   const dismissNotification = (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
@@ -575,8 +605,9 @@ const filteredAmendments = useMemo(() => {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <div className="text-xs text-gray-500 mb-1">Current Agreement/Filing</div>
-            <img 
+            <Image  
               src= "/before.png"
+              alt="Current Document"
               className="rounded border border-gray-700 w-full h-auto"
             />
             <ul className="mt-2 space-y-1 text-xs text-red-400">
@@ -590,8 +621,9 @@ const filteredAmendments = useMemo(() => {
           </div>
           <div>
             <div className="text-xs text-gray-500 mb-1">Required Compliance Updates</div>
-            <img 
-              src= "/after.png" 
+            <Image 
+              src= "/after.png"
+              alt="Required Document" 
               className="rounded border border-gray-700 w-full h-auto"
             />
             <ul className="mt-2 space-y-1 text-xs text-emerald-400">
@@ -686,77 +718,78 @@ const filteredAmendments = useMemo(() => {
     );
   };
 
-  const AmendmentCard = ({ amendment }: { amendment: any }) => (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors">
-      <div className="flex items-start justify-between mb-3">
-        <h3 className="text-lg font-medium text-white">{amendment.title}</h3>
-        <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">
-          {new Date(amendment.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-        </span>
-      </div>
-
-      {amendment.summary && (
-        <p className="text-gray-300 text-sm mb-4">{amendment.summary}</p>
-      )}
-
-      {amendment.requirements?.length && (
-        <div className="mb-4">
-          <div className="text-xs text-gray-400 mb-2">KEY REQUIREMENTS</div>
-          <ul className="space-y-2">
-            {amendment.requirements.map((req: string, i: number) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                <span className="text-gray-500 mt-0.5">•</span>
-                <span>{req}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {amendment.relevance_reason && (
-        <div className="mb-4">
-          <div className="text-xs text-gray-400 mb-1">WHY THIS AFFECTS YOU</div>
-          <p className="text-sm text-gray-300">{amendment.relevance_reason}</p>
-        </div>
-      )}
-
-      {amendment.product_impacts?.length && (
-        <div className="mb-4">
-          <div className="text-xs text-gray-400 mb-2">PORTFOLIO IMPACTS</div>
-          <div className="space-y-3">
-            {amendment.product_impacts.map((impact: any, i: number) => (
-              <div key={i} className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
-                <div className="text-sm font-medium text-white mb-1">{impact.product_name}</div>
-                <div className="text-xs text-gray-400 mb-2">
-                  Affected aspects: {impact.affected_aspects.join(', ')}
-                </div>
-                <ul className="space-y-1.5">
-                  {impact.required_changes.map((change: string, j: number) => (
-                    <li key={j} className="flex items-start gap-2 text-xs text-gray-300">
-                      <span className="text-gray-500">•</span>
-                      <span>{change}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {amendment.document_id && (
-        <a
-          href={`${API_BASE}/pdf?document_id=${encodeURIComponent(amendment.document_id)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
-        >
-          <FileText className="h-4 w-4" />
-          View full regulation document
-        </a>
-      )}
+const AmendmentCard = ({ amendment }: { amendment: DetailedAmendment }) => (
+  <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors">
+    <div className="flex items-start justify-between mb-3">
+      <h3 className="text-lg font-medium text-white">{amendment.title}</h3>
+      <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">
+        {new Date(amendment.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+      </span>
     </div>
-  );
+
+    {amendment.summary && (
+      <p className="text-gray-300 text-sm mb-4">{amendment.summary}</p>
+    )}
+
+    {amendment.requirements?.length && (
+      <div className="mb-4">
+        <div className="text-xs text-gray-400 mb-2">KEY REQUIREMENTS</div>
+        <ul className="space-y-2">
+          {amendment.requirements.map((req, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+              <span className="text-gray-500 mt-0.5">•</span>
+              <span>{req}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    {amendment.relevance_reason && (
+      <div className="mb-4">
+        <div className="text-xs text-gray-400 mb-1">WHY THIS AFFECTS YOU</div>
+        <p className="text-sm text-gray-300">{amendment.relevance_reason}</p>
+      </div>
+    )}
+
+    {amendment.product_impacts?.length && (
+      <div className="mb-4">
+        <div className="text-xs text-gray-400 mb-2">PORTFOLIO IMPACTS</div>
+        <div className="space-y-3">
+          {amendment.product_impacts.map((impact, i) => (
+            <div key={i} className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
+              <div className="text-sm font-medium text-white mb-1">{impact.product_name}</div>
+              <div className="text-xs text-gray-400 mb-2">
+                Affected aspects: {impact.affected_aspects.join(', ')}
+              </div>
+              <ul className="space-y-1.5">
+                {impact.required_changes.map((change, j) => (
+                  <li key={j} className="flex items-start gap-2 text-xs text-gray-300">
+                    <span className="text-gray-500">•</span>
+                    <span>{change}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {amendment.document_id && (
+      <a
+        href={`${API_BASE}/pdf?document_id=${encodeURIComponent(amendment.document_id)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+      >
+        <FileText className="h-4 w-4" />
+        View full regulation document
+      </a>
+    )}
+  </div>
+);
+
 
   const NotificationItem = ({ notification }: { notification: {id: string; message: string; type: 'alert' | 'update'} }) => (
     <div className={`p-3 rounded-lg flex items-start justify-between ${

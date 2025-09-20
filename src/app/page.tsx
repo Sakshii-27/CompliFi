@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Upload, Globe, Shield, Zap, ArrowRight, CheckCircle, BarChart3, AlertTriangle, Link } from 'lucide-react';
+import { Play, Upload, Shield, Zap, ArrowRight, CheckCircle, BarChart3 } from 'lucide-react';
 
 const VigiliLandingPage = () => {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
@@ -46,12 +46,6 @@ useEffect(() => {
     }
 }, []);
 
-  const PulsingDot = ({ delay = 0, size = "w-2 h-2" }) => (
-    <div 
-      className={`${size} bg-emerald-400 rounded-full animate-pulse`}
-      style={{ animationDelay: `${delay}ms` }}
-    />
-  );
 
   type DataPulseProps = {
   top: string | number;   // CSS top value (e.g., "10px" or 10)
@@ -70,7 +64,7 @@ const DataPulse = ({ top, left, delay }: DataPulseProps) => (
 
   // Define animated particles for the hero section background
   useEffect(() => {
-    setParticles(Array.from({ length: 18 }).map((_) => ({
+    setParticles(Array.from({ length: 18 }).map(() => ({
       top: `${Math.random() * 100}%`,
       left: `${Math.random() * 100}%`,
       animationDelay: `${Math.random() * 2000}ms`,
@@ -239,9 +233,9 @@ const DataPulse = ({ top, left, delay }: DataPulseProps) => (
               <br />
               <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Reimagined</span>
             </h3>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              From real-time amendment tracking to AI-powered impact analysis, we've built the future of compliance management.
-            </p>
+            {/* <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+              From real-time amendment tracking to AI-powered impact analysis, we have built the future of compliance management.
+</p> */}
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -307,7 +301,9 @@ const DataPulse = ({ top, left, delay }: DataPulseProps) => (
                 <div className="text-center">
                   <Play className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
                   <p className="text-gray-400">Demo video would play here</p>
-                  <p className="text-sm text-gray-500 mt-2">30-second walkthrough of CompliFi's key features</p>
+                  <p className="text-sm text-gray-500 mt-2">30-second walkthrough of the key features of CompliFi
+</p>
+
                 </div>
               </div>
             </div>
