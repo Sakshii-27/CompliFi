@@ -20,6 +20,19 @@ from utils import (
     load_dgft_metadata,
     update_gst_only,
     load_gst_metadata,
+    ensure_directories, 
+    load_metadata, 
+    save_metadata,
+    save_rbi_metadata, 
+    save_dgft_metadata,
+    save_gst_metadata, 
+    UPLOADS_DIR, 
+    DATA_DIR, 
+    PDF_DIR,
+    RBI_PDF_DIR, 
+    DGFT_PDF_DIR, 
+    GST_PDF_DIR, 
+    get_absolute_path,
     save_filtered_amendments,
     get_latest_by_sources
 )
@@ -34,20 +47,28 @@ from prompt_chain import AmendmentAnalyzer
 from prompt_chain import select_relevant_amendments
 from utils import backfill_metadata_excerpts
 
+ensure_directories()
 app = FastAPI(title="Complifi FSSAI Compliance API")
 
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "https://compli-fi.vercel.app",
+        "https://*.vercel.app"  # Wildcard for Vercel preview deployments
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+API_BASE = os.getenv('NEXT_PUBLIC_BACKEND_URL', 'http://localhost:5005')
+
 @app.get("/")
 def root():
-    return {"msg": "Complifi FSSAI Compliance API Running 🚀"}
+    return {"msg": "Complifi FSSAI Compliance API Running 🚀", "data_directory": DATA_DIR}
 
 @app.get("/update")
 def update() -> Dict[str, int]:
@@ -148,42 +169,6 @@ def test_scrape_gst():
     from utils import scrape_gst_notifications
     return scrape_gst_notifications()
 
-
-# @app.get("/latest-relevant")
-# def latest_relevant(company_id: Optional[str] = None):
-#     """Return the most recent and (likely) most relevant amendments:
-#     - 4 from FSSAI
-#     - 3 from DGFT
-#     - 3 from GST
-#     Each item contains title, date, excerpt, pdf_url, document_id and source.
-#     """
-#     try:
-#         # Load recent 10 from each source
-#         fssai_meta = get_metadata_store()  # general metadata.json
-#         fssai_sorted = sorted([m for m in fssai_meta if m.get("source") == "FSSAI"], key=lambda m: (m.get("date") or ""), reverse=True)[:10]
-
-#         dgft_sorted = load_dgft_metadata()
-#         dgft_sorted = sorted(dgft_sorted, key=lambda m: (m.get("date") or ""), reverse=True)[:10]
-
-#         gst_sorted = load_gst_metadata()
-#         gst_sorted = sorted(gst_sorted, key=lambda m: (m.get("date") or ""), reverse=True)[:10]
-
-#         # Fetch company profile if provided (pass minimal fields to the AI)
-#         company_profile = None
-#         if company_id:
-#             company_profile = get_company_info(company_id)
-
-#         print(f"/latest-relevant: company_id={company_id} fssai_candidates={len(fssai_sorted)} dgft_candidates={len(dgft_sorted)} gst_candidates={len(gst_sorted)}")
-#         # Use AI (Groq) per-source to pick relevant items with requested counts
-#         selected_fssai = select_relevant_amendments(fssai_sorted, top_n=5, source="FSSAI", company=company_profile)
-#         selected_dgft = select_relevant_amendments(dgft_sorted, top_n=3, source="DGFT", company=company_profile)
-#         selected_gst = select_relevant_amendments(gst_sorted, top_n=3, source="GST", company=company_profile)
-
-#         print(f"/latest-relevant: selected fssai={len(selected_fssai)} dgft={len(selected_dgft)} gst={len(selected_gst)}")
-#         return {"FSSAI": selected_fssai, "DGFT": selected_dgft, "GST": selected_gst}
-#     except Exception as e:
-#         print(f"Error in latest_relevant: {e}")
-#         return {"FSSAI": [], "DGFT": [], "GST": []}
 def _load_company_json(company_id: str) -> Optional[Dict]:
     """Load complete company JSON data"""
     base_dir = os.path.dirname(__file__)
@@ -291,12 +276,12 @@ async def submit_company_data(
 ):
     # Save uploaded files
     def save_file(file: UploadFile) -> str:
-        base_dir = os.path.dirname(__file__)
-        upload_dir = os.path.join(base_dir, "data", "uploads")
-        os.makedirs(upload_dir, exist_ok=True)
-        path = os.path.join(upload_dir, f"{hashlib.md5(file.filename.encode()).hexdigest()}_{file.filename}")
+        os.makedirs(UPLOADS_DIR, exist_ok=True)
+        filename = f"{hashlib.md5(file.filename.encode()).hexdigest()}_{file.filename}"
+        path = os.path.join(UPLOADS_DIR, filename)
+        content = file.file.read()
         with open(path, 'wb') as f:
-            f.write(file.file.read())
+            f.write(content)
         return path
 
     # Prepare company data
@@ -374,31 +359,6 @@ async def submit_company_data(
     store_company_data(company_data)
     return {"status": "success", "company_id": hash_company(company_name)}
 
-# @app.get("/compliance/check")
-# async def check_company_compliance(company_id: str):
-#     """Run the new 5-stage prompt chain for a company.
-
-#     This uses:
-#     - First 5 PDFs from backend/data/pdfs as amendments
-#     - Company info from backend/data/companies/<company_id>.json
-#     - First 2 and next 3 PDFs from backend/data/uploads as company docs
-#     Logs are saved under backend/data/logs/<company_id>/<timestamp>/
-#     """
-#     try:
-#         result = analyze_amendments_for_company(company_id)
-#         return {"status": "success", "result": result}
-#     except Exception as e:
-#         # Provide a clear error with hint
-#         raise HTTPException(status_code=400, detail=f"Compliance check failed: {e}")
-
-# def analyze_amendments_for_company(company_id: str) -> Dict:
-#     """Run the new 5-stage prompt chain using on-disk PDFs and company uploads."""
-#     company = get_company_info(company_id)
-#     if not company:
-#         raise ValueError("Company not found. Submit company data first.")
-#     uploads_dir = os.path.join(os.path.dirname(__file__), "data", "uploads")
-#     analyzer = AmendmentAnalyzer(company_id=company_id)
-#     return analyzer.run_full_chain(company, uploads_dir=uploads_dir)
 @app.get("/compliance/check")
 async def check_company_compliance(company_id: str):
     """Run the updated 5-stage prompt chain for a company using filtered amendments."""
@@ -419,29 +379,54 @@ def analyze_amendments_for_company(company_id: str) -> Dict:
 
 @app.get("/pdf")
 def get_pdf(document_id: str):
-    """Return PDF file for a given document_id from metadata store."""
+    """Return PDF file for a given document_id"""
     try:
-        meta = get_metadata_store()
-        match = next((m for m in meta if (m.get("document_id") == document_id)), None)
-        # If not found in FSSAI metadata, look in RBI metadata
-        if not match:
-            rbi_meta = load_rbi_metadata()
-            match = next((m for m in rbi_meta if (m.get("document_id") == document_id)), None)
+        # Search in all metadata sources
+        meta_sources = [
+            get_metadata_store(),
+            load_rbi_metadata(),
+            load_dgft_metadata(),
+            load_gst_metadata()
+        ]
+        
+        match = None
+        for meta in meta_sources:
+            match = next((m for m in meta if m.get("document_id") == document_id), None)
+            if match:
+                break
+        
         if not match:
             raise HTTPException(status_code=404, detail="Document not found")
+        
         path = match.get("pdf_path")
         if not path:
             raise HTTPException(status_code=404, detail="PDF file not found")
-        # Resolve relative paths against backend directory
+        
+        # Handle absolute vs relative paths
         if not os.path.isabs(path):
-            base_dir = os.path.dirname(__file__)
-            path = os.path.join(base_dir, path)
+            # Try to find the file in known directories
+            possible_dirs = [PDF_DIR, RBI_PDF_DIR, DGFT_PDF_DIR, GST_PDF_DIR, UPLOADS_DIR]
+            for base_dir in possible_dirs:
+                abs_path = os.path.join(base_dir, os.path.basename(path))
+                if os.path.exists(abs_path):
+                    path = abs_path
+                    break
+            else:
+                # Try relative to data directory
+                test_path = os.path.join(DATA_DIR, path)
+                if os.path.exists(test_path):
+                    path = test_path
+        
         if not os.path.exists(path):
             raise HTTPException(status_code=404, detail="PDF file not found")
+        
         fname = os.path.basename(path)
         return FileResponse(path, media_type="application/pdf", filename=fname)
+        
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving PDF: {str(e)}")
 
 @app.get("/company/latest")
 def latest_company():
@@ -451,6 +436,7 @@ def latest_company():
         raise HTTPException(status_code=404, detail="No companies found")
     info = get_company_info(cid)
     return {"company_id": cid, "company_info": info}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=5005)

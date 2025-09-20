@@ -8,6 +8,7 @@ from datetime import datetime
 from utils import (
     extract_text_from_file,
 )
+from utils import DATA_DIR, PDF_DIR, UPLOADS_DIR, LOGS_DIR
 
 """Prompt chain for multi-stage amendment analysis and compliance checks.
 
@@ -192,7 +193,8 @@ class AmendmentAnalyzer:
         self.company_id = company_id or "unknown_company"
         # Prepare log directory
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_log_dir = os.path.join(backend_dir, "data", "logs", self.company_id, ts)
+        # default_log_dir = os.path.join(backend_dir, "data", "logs", self.company_id, ts)
+        default_log_dir = os.path.join(LOGS_DIR, self.company_id, ts)
         self.log_dir = log_dir or default_log_dir
         os.makedirs(self.log_dir, exist_ok=True)
     

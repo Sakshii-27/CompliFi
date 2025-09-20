@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import pdfplumber
 from datetime import datetime, time
-from typing import List, Dict
+from typing import List, Dict, Optional
 import hashlib
 import json
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -12,8 +12,61 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 import re
 from pydantic import BaseModel
-from typing import List, Optional, Dict
 from datetime import date
+# from dotenv import load_dotenv
+
+# load_dotenv()
+
+# IS_RAILWAY = os.getenv('RAILWAY_ENVIRONMENT') == 'production' or os.getenv('RAILWAY') is not None
+
+# Storage paths - use /data on Railway, local data folder otherwise
+# if IS_RAILWAY:
+    # BASE_DIR = os.getcwd()
+# else:
+    # BASE_DIR = os.path.dirname(__file__)
+
+BASE_DIR = os.getcwd()
+DATA_DIR = os.path.join(BASE_DIR, "data")
+PDF_DIR = os.path.join(DATA_DIR, "pdfs")
+UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
+COMPANIES_DIR = os.path.join(DATA_DIR, "companies")
+FILTERED_AMMS_DIR = os.path.join(DATA_DIR, "filtered_amms")
+LOGS_DIR = os.path.join(DATA_DIR, "logs")
+VECTOR_DB_DIR = os.path.join(DATA_DIR, "vector_db")
+RBI_PDF_DIR = os.path.join(DATA_DIR, "rbi-pdf")
+DGFT_PDF_DIR = os.path.join(DATA_DIR, "dgft-pdfs")
+GST_PDF_DIR = os.path.join(DATA_DIR, "gst-pdfs")
+
+# Ensure all directories exist
+def ensure_directories():
+    """Create all necessary directories"""
+    directories = [
+        DATA_DIR, PDF_DIR, UPLOADS_DIR, COMPANIES_DIR,
+        FILTERED_AMMS_DIR, LOGS_DIR, VECTOR_DB_DIR,
+        RBI_PDF_DIR, DGFT_PDF_DIR, GST_PDF_DIR
+    ]
+    
+    for directory in directories:
+        os.makedirs(directory, exist_ok=True)
+        print(f"Ensured directory exists: {directory}")
+    
+    # Create empty metadata files if they don't exist
+    metadata_files = {
+        "metadata.json": [],
+        "metadataRBI.json": [],
+        "metadataDGFT.json": [],
+        "metadataGST.json": []
+    }
+    
+    for filename, default_content in metadata_files.items():
+        filepath = os.path.join(DATA_DIR, filename)
+        if not os.path.exists(filepath):
+            with open(filepath, 'w') as f:
+                json.dump(default_content, f)
+            print(f"Created empty metadata file: {filepath}")
+
+# Initialize directories on import
+ensure_directories()
 
 class CompanyInfo(BaseModel):
     company_name: str
@@ -54,28 +107,28 @@ class CompanyData(BaseModel):
 
 
 # Configuration (absolute paths under backend/data)
-BASE_DIR = os.path.dirname(__file__)
-DATA_DIR = os.path.join(BASE_DIR, "data")
-PDF_DIR = os.path.join(DATA_DIR, "pdfs")
-METADATA_FILE = os.path.join(DATA_DIR, "metadata.json")
-os.makedirs(PDF_DIR, exist_ok=True)
-os.makedirs(DATA_DIR, exist_ok=True)
-RBI_PDF_DIR = os.path.join(DATA_DIR, "rbi-pdf")
-os.makedirs(RBI_PDF_DIR, exist_ok=True)
+# BASE_DIR = os.path.dirname(__file__)
+# DATA_DIR = os.path.join(BASE_DIR, "data")
+# PDF_DIR = os.path.join(DATA_DIR, "pdfs")
+# METADATA_FILE = os.path.join(DATA_DIR, "metadata.json")
+# os.makedirs(PDF_DIR, exist_ok=True)
+# os.makedirs(DATA_DIR, exist_ok=True)
+# RBI_PDF_DIR = os.path.join(DATA_DIR, "rbi-pdf")
+# os.makedirs(RBI_PDF_DIR, exist_ok=True)
 
 # Initialize vector stores
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 vector_store = Chroma(
     collection_name="fssai_notifications",
     embedding_function=embeddings,
-    persist_directory="data/vector_db"
+    persist_directory=VECTOR_DB_DIR
 )
 
 # Company data stored as JSON only (no vector DB per requirements)
+# Metadata files
+METADATA_FILE = os.path.join(DATA_DIR, "metadata.json")
 METADATA_RBI_FILE = os.path.join(DATA_DIR, "metadataRBI.json")
-
 METADATA_DGFT_FILE = os.path.join(DATA_DIR, "metadataDGFT.json")
-
 METADATA_GST_FILE = os.path.join(DATA_DIR, "metadataGST.json")
 
 def load_rbi_metadata() -> List[Dict]:
@@ -94,18 +147,25 @@ def load_rbi_metadata() -> List[Dict]:
 
 def save_rbi_metadata(metadata: List[Dict]):
     """Save RBI-specific metadata"""
-    with open(METADATA_RBI_FILE, 'w') as f:
-        json.dump(metadata, f, indent=2)
+    with open(METADATA_RBI_FILE, 'w', encoding='utf-8') as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
 
 def load_metadata() -> List[Dict]:
     if os.path.exists(METADATA_FILE):
-        with open(METADATA_FILE, 'r') as f:
-            return json.load(f)
+        try:
+            with open(METADATA_FILE, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if not content:
+                    return []
+                return json.loads(content)
+        except (json.JSONDecodeError, Exception) as e:
+            print(f"Warning: Error loading metadata, creating fresh: {e}")
+            return []
     return []
 
 def save_metadata(metadata: List[Dict]):
-    with open(METADATA_FILE, 'w') as f:
-        json.dump(metadata, f, indent=2)
+    with open(METADATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
 
 def get_pdf_filename(url: str, title: str) -> str:
     """Generate consistent PDF filename from URL and title"""
@@ -325,20 +385,23 @@ def scrape_rbi_page(url: str, headers: dict) -> List[Dict]:
     
 
 def download_pdf(url: str, filename: str, target_dir: str = PDF_DIR) -> str:
-    """Download PDF if not already exists to the specified directory.
-    Defaults to FSSAI PDF_DIR for backward compatibility.
-    """
-    path = os.path.join(target_dir, filename)
+    """Download PDF to the specified directory"""
+    # Clean filename
+    safe_filename = re.sub(r'[^\w\-\.]', '_', filename)
+    path = os.path.join(target_dir, safe_filename)
     if not os.path.exists(path):
         try:
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
             r = requests.get(url, headers=headers, stream=True)
             r.raise_for_status()
+            # Ensure target directory exists
+            os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
+                    f.write(chunk)           
+            print(f"Downloaded PDF to: {path}")
         except Exception as e:
             print(f"Error downloading PDF {url}: {e}")
             return ""
@@ -967,9 +1030,9 @@ def load_dgft_metadata() -> List[Dict]:
     """Load DGFT-specific metadata"""
     if os.path.exists(METADATA_DGFT_FILE):
         try:
-            with open(METADATA_DGFT_FILE, 'r') as f:
+            with open(METADATA_DGFT_FILE, 'r', encoding='utf-8') as f:
                 content = f.read().strip()
-                if not content:  # Handle empty file
+                if not content:
                     return []
                 return json.loads(content)
         except (json.JSONDecodeError, Exception) as e:
@@ -979,8 +1042,8 @@ def load_dgft_metadata() -> List[Dict]:
 
 def save_dgft_metadata(metadata: List[Dict]):
     """Save DGFT-specific metadata"""
-    with open(METADATA_DGFT_FILE, 'w') as f:
-        json.dump(metadata, f, indent=2)
+    with open(METADATA_DGFT_FILE, 'w', encoding='utf-8') as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
 
 def scrape_gst_notifications() -> List[Dict]:
     """Scrape GST Council notifications with pagination"""
@@ -1208,7 +1271,7 @@ def load_gst_metadata() -> List[Dict]:
     """Load GST-specific metadata"""
     if os.path.exists(METADATA_GST_FILE):
         try:
-            with open(METADATA_GST_FILE, 'r') as f:
+            with open(METADATA_GST_FILE, 'r', encoding='utf-8') as f:
                 content = f.read().strip()
                 if not content:
                     return []
@@ -1220,8 +1283,8 @@ def load_gst_metadata() -> List[Dict]:
 
 def save_gst_metadata(metadata: List[Dict]):
     """Save GST-specific metadata"""
-    with open(METADATA_GST_FILE, 'w') as f:
-        json.dump(metadata, f, indent=2)
+    with open(METADATA_GST_FILE, 'w', encoding='utf-8') as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
 
 def update_gst_only(target_pdf_dir: str = None) -> int:
     """Download new GST notifications, ingest into vector DB and update GST metadata"""
@@ -1361,3 +1424,10 @@ def get_latest_filtered_amendments() -> List[Dict]:
     except Exception as e:
         print(f"Error loading filtered amendments: {e}")
         return []
+    
+# function to get absolute paths for frontend
+def get_absolute_path(relative_path: str) -> str:
+    """Convert relative path to absolute path for serving files"""
+    if relative_path.startswith('data/'):
+        return os.path.join(BASE_DIR, relative_path)
+    return relative_path

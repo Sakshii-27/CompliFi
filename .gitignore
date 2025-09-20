@@ -45,3 +45,8 @@ next-env.d.ts
 /backend/data/dgft-pdfs
 
 venv
+uploads
+logs
+filtered_amms
+companies
+vector_db
