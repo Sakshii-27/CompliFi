@@ -1,5 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import ChatBotIcon from "../../components/ChatBotIcon";
 import { TestTube, Bell, Settings, Calendar, FileText, ChevronRight, AlertTriangle, CheckCircle, X, Filter, Search } from 'lucide-react';
 
 // Expose backend base for client links (safe in client bundle)
@@ -507,6 +508,7 @@ useEffect(() => {
         findings
       } as Analysis;
       setAnalysis(nextAnalysis);
+
       // Auto-select first available timeline slot so sidebar renders immediately
       if (!selectedTimeline && compliancePlan.timeline && compliancePlan.timeline.length > 0) {
         setSelectedTimeline(compliancePlan.timeline[0]);
@@ -517,6 +519,68 @@ useEffect(() => {
         ...prev,
         { id: 'analysis-complete', message: `Compliance analysis completed! ${actionCount} actions generated`, type: 'update' }
       ]));
+
+      // Build Stage 1 JSON (a,b,c) for the chatbot from available data
+      try {
+        const stage1 = {
+          a: {
+            amendments: detailedAmendments.map((d: any) => ({
+              title: d.title,
+              summary: d.summary,
+              requirements: d.requirements || [],
+              date: d.date,
+              document_id: d.document_id,
+              pdf_url: d.pdf_url,
+            }))
+          },
+          b: {
+            impact: (findings || []).map((f: any) => ({
+              amendment_title: f.amendment_title,
+              urgency: f.urgency,
+              gaps: f.gaps,
+              actions: f.actions,
+            })),
+            departments: Array.from(new Set(
+              (timelineSections || []).flatMap((t: any) => (t.actions || [])).map((a: any) => a.department || 'General')
+            )),
+          },
+          c: {
+            timeline: (timelineSections || []).map((slot: any) => ({
+              timeframe: slot.timeframe,
+              actions: (slot.actions || []).map((a: any) => ({
+                department: a.department,
+                task: a.task,
+                steps: a.steps || [],
+                urgency: a.urgency,
+                deadline: a.deadline,
+              }))
+            }))
+          }
+        };
+
+        // Create mock hash and store Stage 1 JSON locally (bypass backend for now)
+        const mockHash = `stage1_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        try {
+          // Store the Stage 1 JSON and hash locally
+          localStorage.setItem('complifi-doc-hash', mockHash);
+          localStorage.setItem(`complifi-stage1-${mockHash}`, JSON.stringify(stage1));
+          
+          setNotifications(prev => ([...prev, { 
+            id: `rag-ready-${Date.now()}`, 
+            message: `✅ Chat RAG Ready: ${mockHash.slice(0,8)}... (Stage 1 loaded locally)`, 
+            type: 'update' 
+          }]));
+        } catch (e) {
+          setNotifications(prev => ([...prev, { 
+            id: `rag-missed-${Date.now()}`, 
+            message: `❌ Local storage failed: ${e}`, 
+            type: 'alert' 
+          }]));
+        }
+      } catch (e) {
+        console.warn('Stage 1 upload failed (non-blocking):', e);
+      }
 
     } catch (e: any) {
       setError(e?.message || 'Analysis failed. Please try again.');

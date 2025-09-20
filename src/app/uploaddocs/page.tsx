@@ -12,6 +12,12 @@ import {
   Mail,
   ChevronRight,
   X,
+  Utensils,
+  Heart,
+  Laptop,
+  Banknote,
+  Ship,
+  Factory,
 } from "lucide-react";
 
 // Types
@@ -43,7 +49,7 @@ interface RegulationCard {
 
 // Top-level step components (stable identity to avoid remounting inputs)
 interface CategorySelectionProps {
-  categories: { id: string; name: string; icon: string; color: string }[];
+  categories: { id: string; name: string; icon: React.ReactElement; color: string }[];
   selectedCategory: string;
   setSelectedCategory: (c: string) => void;
   setCurrentStep: (s: string) => void;
@@ -82,7 +88,7 @@ const CategorySelection = ({
             }`}
           >
             <div
-              className={`w-16 h-16 bg-gradient-to-br ${category.color} rounded-lg flex items-center justify-center text-2xl mb-4 mx-auto`}
+              className={`w-16 h-16 bg-gradient-to-br ${category.color} rounded-lg flex items-center justify-center mb-4 mx-auto`}
             >
               {category.icon}
             </div>
@@ -1206,37 +1212,37 @@ const Page = () => {
     {
       id: "food",
       name: "Food & Beverages",
-      icon: "🍽️",
+      icon: <Utensils className="w-8 h-8 text-white" />,
       color: "from-emerald-500 to-cyan-500",
     },
     {
       id: "healthcare",
       name: "Healthcare & Pharma",
-      icon: "🏥",
+      icon: <Heart className="w-8 h-8 text-white" />,
       color: "from-blue-500 to-purple-500",
     },
     {
       id: "technology",
       name: "Technology & IT",
-      icon: "💻",
+      icon: <Laptop className="w-8 h-8 text-white" />,
       color: "from-purple-500 to-pink-500",
     },
     {
       id: "finance",
       name: "Finance & Banking",
-      icon: "🏦",
+      icon: <Banknote className="w-8 h-8 text-white" />,
       color: "from-yellow-500 to-orange-500",
     },
     {
       id: "export",
       name: "Export & Import",
-      icon: "🚢",
+      icon: <Ship className="w-8 h-8 text-white" />,
       color: "from-green-500 to-blue-500",
     },
     {
       id: "manufacturing",
       name: "Manufacturing",
-      icon: "🏭",
+      icon: <Factory className="w-8 h-8 text-white" />,
       color: "from-red-500 to-yellow-500",
     },
   ];

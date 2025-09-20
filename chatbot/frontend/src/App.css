@@ -1,0 +1,407 @@
+/* Floating Business Icons - Outside Chatbot */
+
+.floating-icons-left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 150px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.floating-icons-right {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: 150px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.floating-icon {
+  position: absolute;
+  font-size: 2.5rem;
+  background: radial-gradient(circle, rgba(0, 255, 136, 0.15), rgba(0, 255, 136, 0.05));
+  border: 2px solid rgba(0, 255, 136, 0.3);
+  border-radius: 20px;
+  padding: 15px;
+  backdrop-filter: blur(10px);
+  box-shadow: 
+    0 0 25px rgba(0, 255, 136, 0.2),
+    inset 0 0 25px rgba(0, 255, 136, 0.1);
+  transition: all 0.3s ease;
+}
+
+.floating-icon:hover {
+  transform: scale(1.2) rotate(10deg);
+  box-shadow: 
+    0 0 40px rgba(0, 255, 136, 0.4),
+    inset 0 0 40px rgba(0, 255, 136, 0.2);
+  border-color: rgba(0, 255, 136, 0.6);
+}
+
+/* Left side icons positioning and animations */
+.icon-1 {
+  top: 10%;
+  left: 20px;
+  animation: floatSlow 8s ease-in-out infinite;
+}
+
+.icon-2 {
+  top: 25%;
+  left: 40px;
+  animation: floatMedium 6s ease-in-out infinite 1s;
+}
+
+.icon-3 {
+  top: 45%;
+  left: 10px;
+  animation: floatFast 4s ease-in-out infinite 2s;
+}
+
+.icon-4 {
+  top: 65%;
+  left: 35px;
+  animation: floatSlow 7s ease-in-out infinite 0.5s;
+}
+
+.icon-5 {
+  top: 80%;
+  left: 15px;
+  animation: floatMedium 5s ease-in-out infinite 1.5s;
+}
+
+/* Right side icons positioning and animations */
+.icon-6 {
+  top: 15%;
+  right: 25px;
+  animation: floatReverse 6s ease-in-out infinite;
+}
+
+.icon-7 {
+  top: 30%;
+  right: 45px;
+  animation: floatSlowReverse 8s ease-in-out infinite 1s;
+}
+
+.icon-8 {
+  top: 50%;
+  right: 15px;
+  animation: floatFastReverse 4s ease-in-out infinite 2s;
+}
+
+.icon-9 {
+  top: 70%;
+  right: 40px;
+  animation: floatReverse 7s ease-in-out infinite 0.5s;
+}
+
+.icon-10 {
+  top: 85%;
+  right: 20px;
+  animation: floatSlowReverse 5s ease-in-out infinite 1.5s;
+}
+
+/* Animation keyframes */
+@keyframes floatSlow {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+    opacity: 0.7;
+  }
+  50% { 
+    transform: translateY(-25px) rotate(5deg); 
+    opacity: 1;
+  }
+}
+
+@keyframes floatMedium {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg) scale(1); 
+    opacity: 0.6;
+  }
+  50% { 
+    transform: translateY(-20px) rotate(-5deg) scale(1.05); 
+    opacity: 1;
+  }
+}
+
+@keyframes floatFast {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+    opacity: 0.8;
+  }
+  50% { 
+    transform: translateY(-15px) rotate(10deg); 
+    opacity: 1;
+  }
+}
+
+@keyframes floatReverse {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+    opacity: 0.7;
+  }
+  50% { 
+    transform: translateY(25px) rotate(-5deg); 
+    opacity: 1;
+  }
+}
+
+@keyframes floatSlowReverse {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg) scale(1); 
+    opacity: 0.6;
+  }
+  50% { 
+    transform: translateY(30px) rotate(8deg) scale(1.1); 
+    opacity: 1;
+  }
+}
+
+@keyframes floatFastReverse {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+    opacity: 0.8;
+  }
+  50% { 
+    transform: translateY(20px) rotate(-10deg); 
+    opacity: 1;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .floating-icons-left,
+  .floating-icons-right {
+    width: 100px;
+  }
+  
+  .floating-icon {
+    font-size: 2rem;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .floating-icons-left,
+  .floating-icons-right {
+    width: 80px;
+  }
+  
+  .floating-icon {
+    font-size: 1.5rem;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-icons-left,
+  .floating-icons-right {
+    display: none;
+  }
+  
+  .crystal-container {
+    display: none;
+  }
+}
+
+/* Glittery Neon Crystals */
+.crystal-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.crystal {
+  position: absolute;
+  background: linear-gradient(45deg, 
+    rgba(0, 255, 136, 0.8), 
+    rgba(0, 255, 200, 0.6),
+    rgba(0, 200, 255, 0.4),
+    rgba(100, 255, 150, 0.8)
+  );
+  border: 1px solid rgba(0, 255, 136, 0.9);
+  box-shadow: 
+    0 0 20px rgba(0, 255, 136, 0.6),
+    0 0 40px rgba(0, 255, 136, 0.4),
+    0 0 60px rgba(0, 255, 136, 0.2),
+    inset 0 0 20px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(2px);
+  transform-style: preserve-3d;
+}
+
+/* Crystal Shapes */
+.crystal-diamond {
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  clip-path: polygon(50% 0%, 0% 50%, 50% 100%, 100% 50%);
+}
+
+.crystal-triangle {
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 14px solid rgba(0, 255, 136, 0.7);
+  background: none;
+  box-shadow: 
+    0 0 15px rgba(0, 255, 136, 0.8),
+    0 0 30px rgba(0, 255, 136, 0.4);
+}
+
+.crystal-hexagon {
+  width: 10px;
+  height: 10px;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+.crystal-star {
+  width: 8px;
+  height: 8px;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.crystal-octagon {
+  width: 10px;
+  height: 10px;
+  clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+}
+
+/* Glitter Effect */
+.crystal::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.8), 
+    transparent, 
+    rgba(0, 255, 136, 0.6),
+    transparent
+  );
+  animation: glitter 2s linear infinite;
+  border-radius: inherit;
+  z-index: -1;
+}
+
+@keyframes glitter {
+  0%, 100% { 
+    opacity: 0;
+    transform: scale(0.8) rotate(0deg);
+  }
+  50% { 
+    opacity: 1;
+    transform: scale(1.2) rotate(180deg);
+  }
+}
+
+/* Crystal Movement Animations */
+@keyframes crystalFloat1 {
+  0% { 
+    transform: translateY(0px) translateX(0px) rotate(0deg) scale(1);
+    opacity: 0.6;
+  }
+  25% { 
+    transform: translateY(-30px) translateX(15px) rotate(90deg) scale(1.1);
+    opacity: 1;
+  }
+  50% { 
+    transform: translateY(-10px) translateX(-20px) rotate(180deg) scale(0.9);
+    opacity: 0.8;
+  }
+  75% { 
+    transform: translateY(-40px) translateX(10px) rotate(270deg) scale(1.2);
+    opacity: 1;
+  }
+  100% { 
+    transform: translateY(0px) translateX(0px) rotate(360deg) scale(1);
+    opacity: 0.6;
+  }
+}
+
+@keyframes crystalFloat2 {
+  0% { 
+    transform: translateY(0px) translateX(0px) rotate(0deg) scale(1);
+    opacity: 0.7;
+  }
+  33% { 
+    transform: translateY(25px) translateX(-25px) rotate(120deg) scale(0.8);
+    opacity: 1;
+  }
+  66% { 
+    transform: translateY(-15px) translateX(30px) rotate(240deg) scale(1.3);
+    opacity: 0.9;
+  }
+  100% { 
+    transform: translateY(0px) translateX(0px) rotate(360deg) scale(1);
+    opacity: 0.7;
+  }
+}
+
+@keyframes crystalFloat3 {
+  0% { 
+    transform: translateY(0px) translateX(0px) rotate(0deg) scale(1);
+    opacity: 0.5;
+  }
+  20% { 
+    transform: translateY(-20px) translateX(20px) rotate(72deg) scale(1.1);
+    opacity: 0.9;
+  }
+  40% { 
+    transform: translateY(10px) translateX(-15px) rotate(144deg) scale(0.9);
+    opacity: 1;
+  }
+  60% { 
+    transform: translateY(-35px) translateX(5px) rotate(216deg) scale(1.2);
+    opacity: 0.8;
+  }
+  80% { 
+    transform: translateY(5px) translateX(-10px) rotate(288deg) scale(0.95);
+    opacity: 1;
+  }
+  100% { 
+    transform: translateY(0px) translateX(0px) rotate(360deg) scale(1);
+    opacity: 0.5;
+  }
+}
+
+/* Crystal Positioning - Left Side */
+.crystal-1 { top: 5%; left: 5%; animation: crystalFloat1 8s ease-in-out infinite; }
+.crystal-2 { top: 15%; left: 8%; animation: crystalFloat2 6s ease-in-out infinite 1s; }
+.crystal-3 { top: 25%; left: 3%; animation: crystalFloat3 10s ease-in-out infinite 2s; }
+.crystal-4 { top: 35%; left: 12%; animation: crystalFloat1 7s ease-in-out infinite 0.5s; }
+.crystal-5 { top: 45%; left: 6%; animation: crystalFloat2 9s ease-in-out infinite 1.5s; }
+.crystal-6 { top: 55%; left: 10%; animation: crystalFloat3 5s ease-in-out infinite 3s; }
+.crystal-7 { top: 65%; left: 4%; animation: crystalFloat1 11s ease-in-out infinite 2.5s; }
+.crystal-8 { top: 75%; left: 9%; animation: crystalFloat2 8s ease-in-out infinite 4s; }
+.crystal-9 { top: 85%; left: 7%; animation: crystalFloat3 6s ease-in-out infinite 1s; }
+.crystal-10 { top: 95%; left: 11%; animation: crystalFloat1 9s ease-in-out infinite 3.5s; }
+
+/* Crystal Positioning - Right Side */
+.crystal-11 { top: 8%; right: 6%; animation: crystalFloat2 7s ease-in-out infinite; }
+.crystal-12 { top: 18%; right: 9%; animation: crystalFloat3 9s ease-in-out infinite 1s; }
+.crystal-13 { top: 28%; right: 4%; animation: crystalFloat1 6s ease-in-out infinite 2s; }
+.crystal-14 { top: 38%; right: 11%; animation: crystalFloat2 10s ease-in-out infinite 0.5s; }
+.crystal-15 { top: 48%; right: 7%; animation: crystalFloat3 8s ease-in-out infinite 1.5s; }
+.crystal-16 { top: 58%; right: 5%; animation: crystalFloat1 5s ease-in-out infinite 3s; }
+.crystal-17 { top: 68%; right: 10%; animation: crystalFloat2 11s ease-in-out infinite 2.5s; }
+.crystal-18 { top: 78%; right: 8%; animation: crystalFloat3 7s ease-in-out infinite 4s; }
+.crystal-19 { top: 88%; right: 12%; animation: crystalFloat1 6s ease-in-out infinite 1s; }
+.crystal-20 { top: 98%; right: 6%; animation: crystalFloat2 9s ease-in-out infinite 3.5s; }
+
+/* Crystal Positioning - Center Areas (avoiding chatbot) */
+.crystal-21 { top: 10%; left: 20%; animation: crystalFloat3 8s ease-in-out infinite; }
+.crystal-22 { top: 20%; right: 20%; animation: crystalFloat1 7s ease-in-out infinite 1s; }
+.crystal-23 { top: 80%; left: 25%; animation: crystalFloat2 9s ease-in-out infinite 2s; }
+.crystal-24 { top: 90%; right: 25%; animation: crystalFloat3 6s ease-in-out infinite 0.5s; }

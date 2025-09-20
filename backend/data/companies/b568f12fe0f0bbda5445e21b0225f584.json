@@ -1,0 +1,67 @@
+{
+  "company_info": {
+    "company_name": "McDonals",
+    "address": "Uttam nagar",
+    "fssai_license": "999999999",
+    "fssai_validity": "2025-09-20",
+    "business_type": "",
+    "gst_number": "12237465585",
+    "incorporation_number": null
+  },
+  "legal_documents": [
+    {
+      "document_type": "FSSAI License",
+      "file_path": "C:\\Users\\Archi  Aggarwal\\CompliFi\\backend\\data\\uploads\\7d9112d3d081d9c2759f9fcc4983142b_FSSAI_License.pdf",
+      "issue_date": "2025-09-20",
+      "expiry_date": null,
+      "verified": false
+    },
+    {
+      "document_type": "GST Certificate",
+      "file_path": "C:\\Users\\Archi  Aggarwal\\CompliFi\\backend\\data\\uploads\\552f5abc80572ebf17bb9e3062aa93a2_GST_Certificate.pdf",
+      "issue_date": "2025-09-20",
+      "expiry_date": null,
+      "verified": false
+    },
+    {
+      "document_type": "Lab Test Report",
+      "file_path": "C:\\Users\\Archi  Aggarwal\\CompliFi\\backend\\data\\uploads\\608fd40150a22dbcf217407fe0a8762d_Lab_Test_Report.pdf",
+      "issue_date": "2025-09-20",
+      "expiry_date": null,
+      "verified": false
+    },
+    {
+      "document_type": "Ingredients Document",
+      "file_path": "C:\\Users\\Archi  Aggarwal\\CompliFi\\backend\\data\\uploads\\2d35724e3e109924cdfaf7f99e520c40_Ingredient_List.pdf",
+      "issue_date": "2025-09-20",
+      "expiry_date": null,
+      "verified": false
+    },
+    {
+      "document_type": "Nutritional Information Document",
+      "file_path": "C:\\Users\\Archi  Aggarwal\\CompliFi\\backend\\data\\uploads\\8163b063e6d56038c987fe9481e73eaa_Nutritional_Info.pdf",
+      "issue_date": "2025-09-20",
+      "expiry_date": null,
+      "verified": false
+    }
+  ],
+  "products": [
+    {
+      "product_name": "Default Product",
+      "category": "food",
+      "ingredients": {},
+      "nutritional_info": {},
+      "allergens": [],
+      "batch_number": null
+    }
+  ],
+  "packaging": [
+    {
+      "label_front_url": "C:\\Users\\Archi  Aggarwal\\CompliFi\\backend\\data\\uploads\\5f66861f41dc60cc54e80e9b93f089d7_Product_Label.pdf",
+      "label_back_url": "",
+      "expiry_format": "DD/MM/YYYY",
+      "packaging_claims": []
+    }
+  ],
+  "optional_data": null
+}
