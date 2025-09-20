@@ -301,7 +301,9 @@ const DataPulse = ({ top, left, delay }: DataPulseProps) => (
                 <div className="text-center">
                   <Play className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
                   <p className="text-gray-400">Demo video would play here</p>
-                  <p className="text-sm text-gray-500 mt-2">30-second walkthrough of CompliFi's key features</p>
+                  <p className="text-sm text-gray-500 mt-2">30-second walkthrough of the key features of CompliFi
+</p>
+
                 </div>
               </div>
             </div>
