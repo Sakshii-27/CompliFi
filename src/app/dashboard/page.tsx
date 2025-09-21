@@ -1,6 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { TestTube, Bell, Settings, Calendar, FileText, ChevronRight, AlertTriangle, CheckCircle, X, Filter, Search } from 'lucide-react';
+import { TestTube, Bell, Settings, Calendar, FileText, ChevronRight, AlertTriangle, CheckCircle, X, Filter, Search , MessageCircle, Send} from 'lucide-react';
 import Image from 'next/image';
 
 // Expose backend base for client links (safe in client bundle)
@@ -926,6 +926,140 @@ const [selectedTimeline, setSelectedTimeline] = useState<{ timeframe: string; ac
     </div>
   );
 
+  // Chatbot Component
+const ComplianceChatbot = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const sendMessage = async () => {
+    if (!input.trim() || !companyId) return;
+    
+    const userMessage = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/chatbot/analyze?company_id=${companyId}&query=${encodeURIComponent(userMessage)}`
+      );
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      } else {
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: 'Sorry, I encountered an error. Please try again.'
+        }]);
+      }
+    } catch (error) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Unable to connect to the compliance analysis service.'
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Chatbot Toggle Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-6 right-6 z-40 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+      >
+        <MessageCircle className="h-6 w-6" />
+      </button>
+
+      {/* Chatbot Panel */}
+      {isOpen && (
+        <div className="fixed bottom-20 right-6 z-40 w-96 bg-gray-900 border border-gray-700 rounded-lg shadow-xl flex flex-col max-h-[70vh]">
+          {/* Header */}
+          <div className="p-4 border-b border-gray-700 bg-gray-800 rounded-t-lg">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-white">Compliance Assistant</h3>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Ask questions about your compliance report and amendments
+            </p>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.length === 0 ? (
+              <div className="text-center text-gray-400 text-sm py-8">
+                <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Ask me about your compliance requirements,</p>
+                <p>deadlines, or specific amendments</p>
+              </div>
+            ) : (
+              messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-xs p-3 rounded-lg ${
+                      message.role === 'user'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-gray-800 text-gray-200'
+                    }`}
+                  >
+                    <p className="text-sm">{message.content}</p>
+                  </div>
+                </div>
+              ))
+            )}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-gray-800 text-gray-200 p-3 rounded-lg max-w-xs">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          <div className="p-4 border-t border-gray-700">
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                placeholder="Ask about compliance requirements..."
+                className="flex-1 bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                disabled={isLoading}
+              />
+              <button
+                onClick={sendMessage}
+                disabled={isLoading || !input.trim()}
+                className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 text-white p-2 rounded-lg transition-colors"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
   const NotificationItem = ({ notification }: { notification: {id: string; message: string; type: 'alert' | 'update'} }) => (
     <div className={`p-3 rounded-lg flex items-start justify-between ${
       notification.type === 'alert' ? 'bg-red-500/10 border border-red-500/20' : 'bg-emerald-500/10 border border-emerald-500/20'
@@ -1241,6 +1375,7 @@ const [selectedTimeline, setSelectedTimeline] = useState<{ timeframe: string; ac
           )}
         </div>
       </div>
+      <ComplianceChatbot />
     </div>
   );
 }
