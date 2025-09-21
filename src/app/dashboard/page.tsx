@@ -932,123 +932,72 @@ const ComplianceChatbot = () => {
   const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string, formatted?: React.ReactNode}>>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
   // Function to format AI responses with rich formatting
-const formatAIResponse = (text: string): React.ReactNode => {
-  // Split into paragraphs
-  const paragraphs = text.split('\n\n').filter(p => p.trim());
-  
-  return (
-    <div className="space-y-4">
-      {paragraphs.map((paragraph, index) => {
-        // Check if this is a heading (text ending with colon or starting with ###)
-        if (paragraph.match(/^[*]{3}[^:]*:$/)) {
-          // Handle ***Text:*** pattern as main headings
-          return (
-            <h3 key={index} className="font-bold text-emerald-300 text-base border-b border-emerald-600 pb-1">
-              {paragraph.replace(/^\*{3}/, '').replace(/\*{3}:$/, '').trim()}
-            </h3>
-          );
-        }
-        
-        if (paragraph.match(/^[*]{2}[^:]*:$/)) {
-          // Handle **Text:** pattern as subheadings
-          return (
-            <h4 key={index} className="font-semibold text-emerald-300 text-sm mt-3">
-              {paragraph.replace(/^\*{2}/, '').replace(/\*{2}:$/, '').replace(':', '').trim()}
-            </h4>
-          );
-        }
-        
-        if (paragraph.match(/^###/) || paragraph.match(/^[A-Z][^:]*:$/)) {
-          return (
-            <h4 key={index} className="font-semibold text-emerald-300 text-sm mt-3">
-              {paragraph.replace('###', '').replace(':', '').trim()}
-            </h4>
-          );
-        }
-        
-        // Check for bullet points
-        if (paragraph.includes('* ') || paragraph.includes('- ')) {
-          const lines = paragraph.split('\n');
-          return (
-            <div key={index} className="space-y-2 ml-2">
-              {lines.map((line, lineIndex) => {
-                if (line.startsWith('* ') || line.startsWith('- ')) {
-                  return (
-                    <div key={lineIndex} className="flex items-start">
-                      <span className="text-emerald-400 mr-3 mt-1 font-bold">•</span>
-                      <span className="text-gray-200 text-sm leading-relaxed">{line.substring(2)}</span>
-                    </div>
-                  );
-                }
-                return line.trim() ? (
-                  <p key={lineIndex} className="text-gray-200 text-sm leading-relaxed">{line}</p>
-                ) : null;
-              })}
-            </div>
-          );
-        }
-        
-        // Handle numbered lists (1. 2. etc.)
-        if (paragraph.match(/^\d+\./)) {
-          const lines = paragraph.split('\n');
-          return (
-            <div key={index} className="space-y-2 ml-2">
-              {lines.map((line, lineIndex) => {
-                if (line.match(/^\d+\./)) {
-                  const number = line.match(/^(\d+)\./)?.[1];
-                  const content = line.replace(/^\d+\./, '').trim();
-                  return (
-                    <div key={lineIndex} className="flex items-start">
-                      <span className="text-emerald-400 mr-3 mt-1 font-bold min-w-[20px]">{number}.</span>
-                      <span className="text-gray-200 text-sm leading-relaxed">{content}</span>
-                    </div>
-                  );
-                }
-                return line.trim() ? (
-                  <p key={lineIndex} className="text-gray-200 text-sm leading-relaxed ml-7">{line}</p>
-                ) : null;
-              })}
-            </div>
-          );
-        }
-        
-        // Handle text with multiple formatting patterns
-        const formatInlineText = (text: string) => {
-          // Split by ** for bold text
-          const parts = text.split(/(\*\*[^*]+\*\*)/);
+  const formatAIResponse = (text: string): React.ReactNode => {
+    // Split into paragraphs
+    const paragraphs = text.split('\n\n').filter(p => p.trim());
+    
+    return (
+      <div className="space-y-3">
+        {paragraphs.map((paragraph, index) => {
+          // Check if this is a heading
+          if (paragraph.match(/^[A-Z][^:]*:$/) || paragraph.match(/^###/)) {
+            return (
+              <h4 key={index} className="font-semibold text-emerald-300 text-sm">
+                {paragraph.replace('###', '').replace(':', '')}
+              </h4>
+            );
+          }
           
-          return parts.map((part, partIndex) => {
-            if (part.startsWith('**') && part.endsWith('**')) {
-              // Bold text
-              return (
-                <span key={partIndex} className="font-bold text-white">
-                  {part.replace(/\*\*/g, '')}
-                </span>
-              );
-            } else if (part.includes('***') && part.includes(':')) {
-              // Handle inline ***text:*** patterns
-              return (
-                <span key={partIndex} className="font-bold text-emerald-300">
-                  {part.replace(/\*\*\*/g, '')}
-                </span>
-              );
-            } else {
-              return part;
-            }
-          });
-        };
-        
-        // Regular paragraph with inline formatting
-        return (
-          <p key={index} className="text-gray-200 text-sm leading-relaxed">
-            {formatInlineText(paragraph)}
-          </p>
-        );
-      })}
-    </div>
-  );
-};
+          // Check for bullet points
+          if (paragraph.includes('* ') || paragraph.includes('- ')) {
+            const lines = paragraph.split('\n');
+            return (
+              <div key={index} className="space-y-1">
+                {lines.map((line, lineIndex) => {
+                  if (line.startsWith('* ') || line.startsWith('- ')) {
+                    return (
+                      <div key={lineIndex} className="flex items-start">
+                        <span className="text-emerald-400 mr-2 mt-1">•</span>
+                        <span className="text-gray-200 text-sm">{line.substring(2)}</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <p key={lineIndex} className="text-gray-200 text-sm">{line}</p>
+                  );
+                })}
+              </div>
+            );
+          }
+          
+          // Check for bold text (text between **)
+          if (paragraph.includes('**')) {
+            const parts = paragraph.split('**');
+            return (
+              <p key={index} className="text-gray-200 text-sm">
+                {parts.map((part, partIndex) => 
+                  partIndex % 2 === 1 ? (
+                    <span key={partIndex} className="font-semibold text-white">{part}</span>
+                  ) : (
+                    part
+                  )
+                )}
+              </p>
+            );
+          }
+          
+          // Regular paragraph
+          return (
+            <p key={index} className="text-gray-200 text-sm leading-relaxed">
+              {paragraph}
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || !companyId) return;
@@ -1097,7 +1046,7 @@ const formatAIResponse = (text: string): React.ReactNode => {
       {/* Chatbot Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-40 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110 group"
+        className="fixed bottom-6 right-6 z-50 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110 group"
       >
         <MessageCircle className="h-6 w-6" />
         <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-2 py-1 scale-0 group-hover:scale-100 transition-transform">
@@ -1105,9 +1054,11 @@ const formatAIResponse = (text: string): React.ReactNode => {
         </span>
       </button>
 
-      {/* Enhanced Chatbot Panel */}
+      {/* Enhanced Chatbot Panel - Made Much Wider */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-40 w-[500px] bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl flex flex-col max-h-[70vh] transform transition-all duration-300">
+        <div 
+          className="fixed bottom-24 right-6 z-50 w-[800px] max-w-[90vw] bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl flex flex-col max-h-[80vh]"
+        >
           {/* Header with gradient */}
           <div className="p-6 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700 rounded-t-2xl">
             <div className="flex items-center justify-between mb-3">
@@ -1147,8 +1098,8 @@ const formatAIResponse = (text: string): React.ReactNode => {
             </div>
           </div>
 
-          {/* Messages Container */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-900">
+          {/* Messages Container with proper background */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-900 min-h-[400px]">
             {messages.length === 0 ? (
               <div className="text-center py-8">
                 <div className="bg-gray-800 p-4 rounded-2xl mb-4">
@@ -1168,7 +1119,7 @@ const formatAIResponse = (text: string): React.ReactNode => {
                     <p className="text-gray-400 text-xs">Check compliance timelines</p>
                   </div>
                   <div className="bg-gray-800 p-3 rounded-lg">
-                    <h5 className="font-medium bg-emerald-600 text-xs mb-1">🏷️ Labeling</h5>
+                    <h5 className="font-medium text-emerald-300 text-xs mb-1">🏷️ Labeling</h5>
                     <p className="text-gray-400 text-xs">Packaging requirements</p>
                   </div>
                   <div className="bg-gray-800 p-3 rounded-lg">
@@ -1184,7 +1135,7 @@ const formatAIResponse = (text: string): React.ReactNode => {
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-md p-4 rounded-2xl ${
+                    className={`max-w-[70%] p-4 rounded-2xl ${
                       message.role === 'user'
                         ? 'bg-emerald-600 text-white'
                         : 'bg-gray-800 border border-gray-700'
@@ -1200,7 +1151,7 @@ const formatAIResponse = (text: string): React.ReactNode => {
             
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-gray-800 border border-gray-700 p-4 rounded-2xl max-w-md">
+                <div className="bg-gray-800 border border-gray-700 p-4 rounded-2xl max-w-[70%]">
                   <div className="flex items-center space-x-2">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></div>
@@ -1214,7 +1165,7 @@ const formatAIResponse = (text: string): React.ReactNode => {
             )}
           </div>
 
-          {/* Enhanced Input Area */}
+          {/* Enhanced Input Area with solid background */}
           <div className="p-4 bg-gray-800 border-t border-gray-700 rounded-b-2xl">
             <div className="flex space-x-3">
               <div className="flex-1 relative">
