@@ -1252,7 +1252,7 @@ const formatAIResponse = (text: string): React.ReactNode => {
             {/* Quick tips */}
             <div className="flex items-center justify-between mt-3">
               <span className="text-gray-400 text-xs">
-                💡 Try: "What are the urgent actions needed?"
+                💡 Try: What are the urgent actions needed?
               </span>
               <span className="text-emerald-400 text-xs">
                 {companyId ? 'Connected' : 'Company data needed'}
